@@ -10,6 +10,7 @@ services:
       - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/nginx/sites-available/reverse-proxy.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - repo-service
       - auth-service
