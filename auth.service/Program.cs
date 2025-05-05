@@ -161,7 +161,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment() || true)
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AuthService v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/auth/swagger/v1/swagger.json", "AuthService v1"));
 }
 
 app.UseCors(myAllowSpecificOrigins);
