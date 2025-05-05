@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using repo_nha_hang_com_ga_BE.Models.Common;
 using repo_nha_hang_com_ga_BE.Models.Common.Models;
 
@@ -8,7 +9,7 @@ public class ThucDon : BaseMongoDb
     public string? tenThucDon { get; set; }
     public List<LoaiMonAnMenu>? loaiMonAns { get; set; }
     public List<ComboMenu>? combos { get; set; }
-    public Boolean? trangThai { get; set; }
+    public TrangThaiThucDon? trangThai { get; set; }
 }
 
 public class ComboMenu : IdName
@@ -18,5 +19,14 @@ public class ComboMenu : IdName
     public string? giaTien { get; set; }
     public string? moTa { get; set; }
 }
+
+public enum TrangThaiThucDon
+{
+    [Description("Chưa hoạt động")]
+    ChuaHoatDong = 0,
+    [Description("Đã hoạt động")]
+    DaHoatDong = 1,
+}
+
 
 
