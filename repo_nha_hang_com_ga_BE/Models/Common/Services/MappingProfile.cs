@@ -105,7 +105,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateLoaiKhuyenMai), typeof(LoaiKhuyenMai));
 
         //Món ăn
-        CreateMap(typeof(MonAn), typeof(MonAnRespond));
+        // CreateMap(typeof(MonAn), typeof(MonAnRespond));
         CreateMap(typeof(RequestAddMonAn), typeof(MonAn));
         CreateMap(typeof(RequestUpdateMonAn), typeof(MonAn));
 
@@ -116,7 +116,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateBan), typeof(Ban));
 
         //Combo
-        CreateMap(typeof(Combo), typeof(ComboRespond));
+        // CreateMap(typeof(Combo), typeof(ComboRespond));
         CreateMap(typeof(RequestAddCombo), typeof(Combo));
         CreateMap(typeof(RequestUpdateCombo), typeof(Combo));
 

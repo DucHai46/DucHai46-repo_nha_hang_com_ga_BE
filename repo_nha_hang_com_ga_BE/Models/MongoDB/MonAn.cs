@@ -5,8 +5,8 @@ namespace repo_nha_hang_com_ga_BE.Models.MongoDB
 {
     public class MonAn : BaseMongoDb
     {
-        public IdName? loaiMonAn { get; set; }
-        public IdName? congThuc { get; set; }
+        public string? loaiMonAn { get; set; }
+        public string? congThuc { get; set; }
         public GiamGiaMonAn? giamGia { get; set; }
         public string? tenMonAn { get; set; }
         public string? hinhAnh { get; set; }
@@ -15,7 +15,8 @@ namespace repo_nha_hang_com_ga_BE.Models.MongoDB
     }
 }
 
-public class GiamGiaMonAn : IdName
+public class GiamGiaMonAn
 {
+    public string? id { get; set; }
     public string? giaTri { get; set; }
 }

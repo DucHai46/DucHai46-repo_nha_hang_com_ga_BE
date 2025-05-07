@@ -6,9 +6,9 @@ public class RequestSearchMonAn : PagingParameterModel
 {
     public string? tenMonAn { get; set; }
 
-    public string? tenLoaiMonAn { get; set; }
+    public string? idLoaiMonAn { get; set; }
 
-    public string? tenCongThuc { get; set; }
+    public string? idCongThuc { get; set; }
 
     public string? giaTien { get; set; }
 }

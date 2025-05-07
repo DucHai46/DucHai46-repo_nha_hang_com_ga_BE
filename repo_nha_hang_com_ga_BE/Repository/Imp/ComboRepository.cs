@@ -16,6 +16,9 @@ public class ComboRepository : IComboRepository
 {
     private readonly IMongoCollection<Combo> _collection;
     private readonly IMapper _mapper;
+    private readonly IMongoCollection<LoaiMonAn> _collectionLoaiMonAn;
+    private readonly IMongoCollection<MonAn> _collectionMonAn;
+
 
     public ComboRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
     {
@@ -23,6 +26,8 @@ public class ComboRepository : IComboRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<Combo>("Combo");
+        _collectionLoaiMonAn = database.GetCollection<LoaiMonAn>("LoaiMonAn");
+        _collectionMonAn = database.GetCollection<MonAn>("MonAn");
         _mapper = mapper;
     }
 
@@ -53,7 +58,7 @@ public class ComboRepository : IComboRepository
                 .Include(x => x.giaTien)
                 .Include(x => x.moTa);
 
-            var findOptions = new FindOptions<Combo, ComboRespond>
+            var findOptions = new FindOptions<Combo, Combo>
             {
                 Projection = projection
             };
@@ -74,11 +79,69 @@ public class ComboRepository : IComboRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var combos = await cursor.ToListAsync();
 
+                var monAnDict = new Dictionary<string, string>();
+                var loaiMonAnDict = new Dictionary<string, string>();
+
+                var loaiMonAnIds = combos.SelectMany(x => x.loaiMonAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiMonAnFilter = Builders<LoaiMonAn>.Filter.In(x => x.Id, loaiMonAnIds);
+                var loaiMonAnProjection = Builders<LoaiMonAn>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiMonAns = await _collectionLoaiMonAn.Find(loaiMonAnFilter)
+                    .Project<LoaiMonAn>(loaiMonAnProjection)
+                    .ToListAsync();
+
+                loaiMonAnDict = loaiMonAns.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                List<MonAn> monAns = new List<MonAn>();
+                foreach (var combo in combos)
+                {
+                    var monAnIds = combo.loaiMonAns.SelectMany(x => x.monAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+                    var monAnProjection = Builders<MonAn>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenMonAn)
+                        .Include(x => x.hinhAnh)
+                        .Include(x => x.giaTien)
+                        .Include(x => x.moTa);
+                    monAns = await _collectionMonAn.Find(monAnFilter)
+                        .Project<MonAn>(monAnProjection)
+                        .ToListAsync();
+
+                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                }
+
+                var comboResponds = combos.Select(combo => new ComboRespond
+                {
+                    id = combo.Id,
+                    tenCombo = combo.tenCombo,
+                    loaiMonAns = combo.loaiMonAns.Select(x => new LoaiMonAnMenuRespond
+                    {
+                        Id = x.id,
+                        Name = loaiMonAnDict.ContainsKey(x.id) ? loaiMonAnDict[x.id] : null,
+                        monAns = x.monAns.Select(y => new MonAnMenuRespond
+                        {
+                            id = y.id,
+                            tenMonAn = monAnDict.ContainsKey(y.id) ? monAnDict[y.id] : null,
+                            hinhAnh = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.hinhAnh : null,
+                            giaTien = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
+                            moTa = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.moTa : null
+                        }).ToList(),
+                        moTa = x.moTa
+                    }).ToList(),
+                    hinhAnh = combo.hinhAnh,
+                    giaTien = combo.giaTien,
+                    moTa = combo.moTa
+                }).ToList();
+
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<ComboRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = combos
+                    Data = comboResponds
                 };
 
                 return new RespondAPIPaging<List<ComboRespond>>(
@@ -91,12 +154,69 @@ public class ComboRepository : IComboRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var combos = await cursor.ToListAsync();
 
+                var monAnDict = new Dictionary<string, string>();
+                var loaiMonAnDict = new Dictionary<string, string>();
+
+                var loaiMonAnIds = combos.SelectMany(x => x.loaiMonAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiMonAnFilter = Builders<LoaiMonAn>.Filter.In(x => x.Id, loaiMonAnIds);
+                var loaiMonAnProjection = Builders<LoaiMonAn>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiMonAns = await _collectionLoaiMonAn.Find(loaiMonAnFilter)
+                    .Project<LoaiMonAn>(loaiMonAnProjection)
+                    .ToListAsync();
+
+                loaiMonAnDict = loaiMonAns.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                List<MonAn> monAns = new List<MonAn>();
+                foreach (var combo in combos)
+                {
+                    var monAnIds = combo.loaiMonAns.SelectMany(x => x.monAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+                    var monAnProjection = Builders<MonAn>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenMonAn)
+                        .Include(x => x.hinhAnh)
+                        .Include(x => x.giaTien)
+                        .Include(x => x.moTa);
+                    monAns = await _collectionMonAn.Find(monAnFilter)
+                        .Project<MonAn>(monAnProjection)
+                        .ToListAsync();
+
+                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                }
+
+                var comboResponds = combos.Select(combo => new ComboRespond
+                {
+                    id = combo.Id,
+                    tenCombo = combo.tenCombo,
+                    loaiMonAns = combo.loaiMonAns.Select(x => new LoaiMonAnMenuRespond
+                    {
+                        Id = x.id,
+                        Name = loaiMonAnDict.ContainsKey(x.id) ? loaiMonAnDict[x.id] : null,
+                        monAns = x.monAns.Select(y => new MonAnMenuRespond
+                        {
+                            id = y.id,
+                            tenMonAn = monAnDict.ContainsKey(y.id) ? monAnDict[y.id] : null,
+                            hinhAnh = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.hinhAnh : null,
+                            giaTien = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
+                            moTa = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.moTa : null
+                        }).ToList(),
+                        moTa = x.moTa
+                    }).ToList(),
+                    hinhAnh = combo.hinhAnh,
+                    giaTien = combo.giaTien,
+                    moTa = combo.moTa
+                }).ToList();
+
                 return new RespondAPIPaging<List<ComboRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<ComboRespond>>
                     {
-                        Data = combos,
-                        Paging = new PagingDetail(1, combos.Count, combos.Count)
+                        Data = comboResponds,
+                        Paging = new PagingDetail(1, comboResponds.Count, comboResponds.Count)
                     }
                 );
             }
@@ -124,7 +244,61 @@ public class ComboRepository : IComboRepository
                 );
             }
 
-            var comboRespond = _mapper.Map<ComboRespond>(combo);
+            // var comboRespond = _mapper.Map<ComboRespond>(combo);
+            var monAnDict = new Dictionary<string, string>();
+            var loaiMonAnDict = new Dictionary<string, string>();
+
+            var loaiMonAnIds = combo.loaiMonAns.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiMonAnFilter = Builders<LoaiMonAn>.Filter.In(x => x.Id, loaiMonAnIds);
+            var loaiMonAnProjection = Builders<LoaiMonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiMonAns = await _collectionLoaiMonAn.Find(loaiMonAnFilter)
+                .Project<LoaiMonAn>(loaiMonAnProjection)
+                .ToListAsync();
+
+            loaiMonAnDict = loaiMonAns.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            List<MonAn> monAns = new List<MonAn>();
+
+            var monAnIds = combo.loaiMonAns.SelectMany(x => x.monAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+            var monAnProjection = Builders<MonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenMonAn)
+                .Include(x => x.hinhAnh)
+                .Include(x => x.giaTien)
+                .Include(x => x.moTa);
+            monAns = await _collectionMonAn.Find(monAnFilter)
+                .Project<MonAn>(monAnProjection)
+                .ToListAsync();
+
+            monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+
+            var comboRespond = new ComboRespond
+            {
+                id = combo.Id,
+                tenCombo = combo.tenCombo,
+                loaiMonAns = combo.loaiMonAns.Select(x => new LoaiMonAnMenuRespond
+                {
+                    Id = x.id,
+                    Name = loaiMonAnDict.ContainsKey(x.id) ? loaiMonAnDict[x.id] : null,
+                    monAns = x.monAns.Select(y => new MonAnMenuRespond
+                    {
+                        id = y.id,
+                        tenMonAn = monAnDict.ContainsKey(y.id) ? monAnDict[y.id] : null,
+                        hinhAnh = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.hinhAnh : null,
+                        giaTien = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
+                        moTa = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.moTa : null
+                    }).ToList(),
+                    moTa = x.moTa
+                }).ToList(),
+                hinhAnh = combo.hinhAnh,
+                giaTien = combo.giaTien,
+                moTa = combo.moTa
+            };
 
             return new RespondAPI<ComboRespond>(
                 ResultRespond.Succeeded,
@@ -156,7 +330,61 @@ public class ComboRepository : IComboRepository
 
             await _collection.InsertOneAsync(newCombo);
 
-            var comboRespond = _mapper.Map<ComboRespond>(newCombo);
+            // var comboRespond = _mapper.Map<ComboRespond>(newCombo);
+            var monAnDict = new Dictionary<string, string>();
+            var loaiMonAnDict = new Dictionary<string, string>();
+
+            var loaiMonAnIds = newCombo.loaiMonAns.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiMonAnFilter = Builders<LoaiMonAn>.Filter.In(x => x.Id, loaiMonAnIds);
+            var loaiMonAnProjection = Builders<LoaiMonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiMonAns = await _collectionLoaiMonAn.Find(loaiMonAnFilter)
+                .Project<LoaiMonAn>(loaiMonAnProjection)
+                .ToListAsync();
+
+            loaiMonAnDict = loaiMonAns.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            List<MonAn> monAns = new List<MonAn>();
+
+            var monAnIds = newCombo.loaiMonAns.SelectMany(x => x.monAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+            var monAnProjection = Builders<MonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenMonAn)
+                .Include(x => x.hinhAnh)
+                .Include(x => x.giaTien)
+                .Include(x => x.moTa);
+            monAns = await _collectionMonAn.Find(monAnFilter)
+                .Project<MonAn>(monAnProjection)
+                .ToListAsync();
+
+            monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+
+            var comboRespond = new ComboRespond
+            {
+                id = newCombo.Id,
+                tenCombo = newCombo.tenCombo,
+                loaiMonAns = newCombo.loaiMonAns.Select(x => new LoaiMonAnMenuRespond
+                {
+                    Id = x.id,
+                    Name = loaiMonAnDict.ContainsKey(x.id) ? loaiMonAnDict[x.id] : null,
+                    monAns = x.monAns.Select(y => new MonAnMenuRespond
+                    {
+                        id = y.id,
+                        tenMonAn = monAnDict.ContainsKey(y.id) ? monAnDict[y.id] : null,
+                        hinhAnh = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.hinhAnh : null,
+                        giaTien = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
+                        moTa = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.moTa : null
+                    }).ToList(),
+                    moTa = x.moTa
+                }).ToList(),
+                hinhAnh = newCombo.hinhAnh,
+                giaTien = newCombo.giaTien,
+                moTa = newCombo.moTa
+            };
 
             return new RespondAPI<ComboRespond>(
                 ResultRespond.Succeeded,
@@ -206,7 +434,61 @@ public class ComboRepository : IComboRepository
                 );
             }
 
-            var comboRespond = _mapper.Map<ComboRespond>(combo);
+            // var comboRespond = _mapper.Map<ComboRespond>(combo);
+            var monAnDict = new Dictionary<string, string>();
+            var loaiMonAnDict = new Dictionary<string, string>();
+
+            var loaiMonAnIds = combo.loaiMonAns.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiMonAnFilter = Builders<LoaiMonAn>.Filter.In(x => x.Id, loaiMonAnIds);
+            var loaiMonAnProjection = Builders<LoaiMonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiMonAns = await _collectionLoaiMonAn.Find(loaiMonAnFilter)
+                .Project<LoaiMonAn>(loaiMonAnProjection)
+                .ToListAsync();
+
+            loaiMonAnDict = loaiMonAns.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            List<MonAn> monAns = new List<MonAn>();
+
+            var monAnIds = combo.loaiMonAns.SelectMany(x => x.monAns.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+            var monAnProjection = Builders<MonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenMonAn)
+                .Include(x => x.hinhAnh)
+                .Include(x => x.giaTien)
+                .Include(x => x.moTa);
+            monAns = await _collectionMonAn.Find(monAnFilter)
+                .Project<MonAn>(monAnProjection)
+                .ToListAsync();
+
+            monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+
+            var comboRespond = new ComboRespond
+            {
+                id = combo.Id,
+                tenCombo = combo.tenCombo,
+                loaiMonAns = combo.loaiMonAns.Select(x => new LoaiMonAnMenuRespond
+                {
+                    Id = x.id,
+                    Name = loaiMonAnDict.ContainsKey(x.id) ? loaiMonAnDict[x.id] : null,
+                    monAns = x.monAns.Select(y => new MonAnMenuRespond
+                    {
+                        id = y.id,
+                        tenMonAn = monAnDict.ContainsKey(y.id) ? monAnDict[y.id] : null,
+                        hinhAnh = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.hinhAnh : null,
+                        giaTien = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
+                        moTa = monAnDict.ContainsKey(y.id) ? monAns.FirstOrDefault(m => m.Id == y.id)?.moTa : null
+                    }).ToList(),
+                    moTa = x.moTa
+                }).ToList(),
+                hinhAnh = combo.hinhAnh,
+                giaTien = combo.giaTien,
+                moTa = combo.moTa
+            };
 
             return new RespondAPI<ComboRespond>(
                 ResultRespond.Succeeded,
