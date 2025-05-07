@@ -117,7 +117,7 @@ public class MonAnRepository : IMonAnRepository
 
                 var giamGiaDict = new Dictionary<string, string>();
 
-                var giamGiaIds = monAns.Select(x => x.giamGia.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                var giamGiaIds = monAns.Select(x => x.giamGia).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
                 var giamGiaFilter = Builders<GiamGia>.Filter.In(x => x.Id, giamGiaIds);
                 var giamGiaProjection = Builders<GiamGia>.Projection
                     .Include(x => x.Id)
@@ -126,7 +126,7 @@ public class MonAnRepository : IMonAnRepository
                     .Project<GiamGia>(giamGiaProjection)
                     .ToListAsync();
 
-                giamGiaDict = giamGias.ToDictionary(x => x.Id, x => x.tenGiamGia);
+                // giamGiaDict = giamGias.ToDictionary(x => x.Id, x => x.tenGiamGia);
 
                 var monAnsRespond = monAns.Select(x => new MonAnRespond
                 {
@@ -144,9 +144,9 @@ public class MonAnRepository : IMonAnRepository
                     },
                     giamGia = new GiamGiaMonAnRespond
                     {
-                        Id = x.giamGia.id,
-                        Name = giamGiaDict[x.giamGia.id],
-                        giaTri = x.giamGia.giaTri
+                        Id = x.giamGia,
+                        Name = giamGias.FirstOrDefault(y => y.Id == x.giamGia)?.tenGiamGia,
+                        giaTri = giamGias.FirstOrDefault(y => y.Id == x.giamGia)?.giaTri
                     },
                     moTa = x.moTa,
                     hinhAnh = x.hinhAnh,
@@ -198,7 +198,7 @@ public class MonAnRepository : IMonAnRepository
 
                 var giamGiaDict = new Dictionary<string, string>();
 
-                var giamGiaIds = monAns.Select(x => x.giamGia.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                var giamGiaIds = monAns.Select(x => x.giamGia).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
                 var giamGiaFilter = Builders<GiamGia>.Filter.In(x => x.Id, giamGiaIds);
                 var giamGiaProjection = Builders<GiamGia>.Projection
                     .Include(x => x.Id)
@@ -207,7 +207,7 @@ public class MonAnRepository : IMonAnRepository
                     .Project<GiamGia>(giamGiaProjection)
                     .ToListAsync();
 
-                giamGiaDict = giamGias.ToDictionary(x => x.Id, x => x.tenGiamGia);
+                // giamGiaDict = giamGias.ToDictionary(x => x.Id, x => x.tenGiamGia);
 
                 var monAnsRespond = monAns.Select(x => new MonAnRespond
                 {
@@ -225,9 +225,9 @@ public class MonAnRepository : IMonAnRepository
                     },
                     giamGia = new GiamGiaMonAnRespond
                     {
-                        Id = x.giamGia.id,
-                        Name = giamGiaDict[x.giamGia.id],
-                        giaTri = x.giamGia.giaTri
+                        Id = x.giamGia,
+                        Name = giamGias.FirstOrDefault(y => y.Id == x.giamGia)?.tenGiamGia,
+                        giaTri = giamGias.FirstOrDefault(y => y.Id == x.giamGia)?.giaTri
                     },
                     moTa = x.moTa,
                     hinhAnh = x.hinhAnh,
@@ -270,7 +270,7 @@ public class MonAnRepository : IMonAnRepository
             // var monAnRespond = _mapper.Map<MonAnRespond>(monAn);
             var loaiMonAn = await _collectionLoaiMonAn.Find(x => x.Id == monAn.loaiMonAn).FirstOrDefaultAsync();
             var congThuc = await _collectionCongThuc.Find(x => x.Id == monAn.congThuc).FirstOrDefaultAsync();
-            var giamGia = await _collectionGiamGia.Find(x => x.Id == monAn.giamGia.id).FirstOrDefaultAsync();
+            var giamGia = await _collectionGiamGia.Find(x => x.Id == monAn.giamGia).FirstOrDefaultAsync();
 
             var monAnRespond = new MonAnRespond
             {
@@ -329,7 +329,7 @@ public class MonAnRepository : IMonAnRepository
 
             var loaiMonAn = await _collectionLoaiMonAn.Find(x => x.Id == newMonAn.loaiMonAn).FirstOrDefaultAsync();
             var congThuc = await _collectionCongThuc.Find(x => x.Id == newMonAn.congThuc).FirstOrDefaultAsync();
-            var giamGia = await _collectionGiamGia.Find(x => x.Id == newMonAn.giamGia.id).FirstOrDefaultAsync();
+            var giamGia = await _collectionGiamGia.Find(x => x.Id == newMonAn.giamGia).FirstOrDefaultAsync();
 
             var monAnRespond = new MonAnRespond
             {
@@ -409,7 +409,7 @@ public class MonAnRepository : IMonAnRepository
             // var monAnRespond = _mapper.Map<MonAnRespond>(monAn);
             var loaiMonAn = await _collectionLoaiMonAn.Find(x => x.Id == monAn.loaiMonAn).FirstOrDefaultAsync();
             var congThuc = await _collectionCongThuc.Find(x => x.Id == monAn.congThuc).FirstOrDefaultAsync();
-            var giamGia = await _collectionGiamGia.Find(x => x.Id == monAn.giamGia.id).FirstOrDefaultAsync();
+            var giamGia = await _collectionGiamGia.Find(x => x.Id == monAn.giamGia).FirstOrDefaultAsync();
 
             var monAnRespond = new MonAnRespond
             {

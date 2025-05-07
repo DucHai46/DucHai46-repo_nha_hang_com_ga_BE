@@ -99,7 +99,8 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                     {
                         Id = loaiNguyenLieu.danhMucNguyenLieu,
                         Name = loaiNguyenLieu.danhMucNguyenLieu != null && danhMucNguyenLieuDict.ContainsKey(loaiNguyenLieu.danhMucNguyenLieu) ? danhMucNguyenLieuDict[loaiNguyenLieu.danhMucNguyenLieu] : null
-                    }
+                    },
+                    moTa = loaiNguyenLieu.moTa
                 }).ToList();
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
@@ -143,7 +144,8 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                     {
                         Id = loaiNguyenLieu.danhMucNguyenLieu,
                         Name = loaiNguyenLieu.danhMucNguyenLieu != null && danhMucNguyenLieuDict.ContainsKey(loaiNguyenLieu.danhMucNguyenLieu) ? danhMucNguyenLieuDict[loaiNguyenLieu.danhMucNguyenLieu] : null
-                    }
+                    },
+                    moTa = loaiNguyenLieu.moTa
                 }).ToList();
 
                 return new RespondAPIPaging<List<LoaiNguyenLieuRespond>>(
@@ -188,7 +190,8 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 {
                     Id = danhMucNguyenLieu.Id,
                     Name = danhMucNguyenLieu.tenDanhMuc
-                }
+                },
+                moTa = loaiNguyenLieu.moTa
             };
 
             return new RespondAPI<LoaiNguyenLieuRespond>(
@@ -230,7 +233,8 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 {
                     Id = newLoaiNguyenLieu.danhMucNguyenLieu,
                     Name = danhMucNguyenLieu.tenDanhMuc
-                }
+                },
+                moTa = newLoaiNguyenLieu.moTa
             };
             return new RespondAPI<LoaiNguyenLieuRespond>(
                 ResultRespond.Succeeded,
@@ -289,7 +293,8 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 {
                     Id = loaiNguyenLieu.danhMucNguyenLieu,
                     Name = danhMucNguyenLieu.tenDanhMuc
-                }
+                },
+                moTa = loaiNguyenLieu.moTa
             };
             return new RespondAPI<LoaiNguyenLieuRespond>(
                 ResultRespond.Succeeded,

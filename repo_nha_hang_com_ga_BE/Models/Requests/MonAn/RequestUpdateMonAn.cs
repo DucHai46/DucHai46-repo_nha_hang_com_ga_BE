@@ -10,7 +10,7 @@ public class RequestUpdateMonAn
 
     public string? congThuc { get; set; }
 
-    public GiamGiaMonAn? giamGia { get; set; }
+    public string? giamGia { get; set; }
 
     public string? moTa { get; set; }
 
