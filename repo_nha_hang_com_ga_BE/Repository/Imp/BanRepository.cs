@@ -278,6 +278,12 @@ public class BanRepository : IBanRepository
             }
 
             var banRespond = _mapper.Map<BanRespond>(ban);
+            var loaiBan = await _collectionLoaiBan.Find(x => x.Id == ban.loaiBan).FirstOrDefaultAsync();
+            banRespond.loaiBan = new IdName
+            {
+                Id = loaiBan.Id,
+                Name = loaiBan.tenLoai
+            };
 
             return new RespondAPI<BanRespond>(
                 ResultRespond.Succeeded,

@@ -7,6 +7,6 @@ public class LoaiMonAn : BaseMongoDb
 {
     public string? tenLoai { get; set; }
     public string? moTa { get; set; }
-    public IdName? danhMucMonAn { get; set; }
+    public string? danhMucMonAn { get; set; }
 }
 

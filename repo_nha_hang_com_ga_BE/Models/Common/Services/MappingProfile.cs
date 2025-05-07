@@ -79,12 +79,13 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateDanhMucMonAn), typeof(DanhMucMonAn));
 
         //Loại món ăn
-        CreateMap(typeof(LoaiMonAn), typeof(LoaiMonAnRespond));
+        CreateMap<LoaiMonAn, LoaiMonAnRespond>()
+            .ForMember(dest => dest.danhMucMonAn, opt => opt.Ignore());
         CreateMap(typeof(RequestAddLoaiMonAn), typeof(LoaiMonAn));
         CreateMap(typeof(RequestUpdateLoaiMonAn), typeof(LoaiMonAn));
 
         //Công thức
-        CreateMap(typeof(CongThuc), typeof(CongThucRespond));
+        // CreateMap(typeof(CongThuc), typeof(CongThucRespond));
         CreateMap(typeof(RequestAddCongThuc), typeof(CongThuc));
         CreateMap(typeof(RequestUpdateCongThuc), typeof(CongThuc));
 
