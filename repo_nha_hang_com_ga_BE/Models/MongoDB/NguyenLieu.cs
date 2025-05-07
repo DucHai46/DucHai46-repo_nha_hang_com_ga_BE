@@ -9,10 +9,10 @@ public class NguyenLieu : BaseMongoDb
     // public DateTimeOffset? hanSuDung { get; set; }
     public int? soLuong { get; set; }
     public string? moTa { get; set; }
-    public IdName? loaiNguyenLieu { get; set; }
-    public IdName? donViTinh { get; set; }
+    public string? loaiNguyenLieu { get; set; }
+    public string? donViTinh { get; set; }
 
-    public IdName? tuDo { get; set; }
+    public string? tuDo { get; set; }
 
     public TrangThaiNguyenLieu? trangThai { get; set; }
 

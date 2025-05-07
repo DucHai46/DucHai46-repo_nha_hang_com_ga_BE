@@ -59,7 +59,7 @@ public class MappingProfile : Profile
 
 
         //Loại nguyên liệu
-        CreateMap(typeof(LoaiNguyenLieu), typeof(LoaiNguyenLieuRespond));
+        // CreateMap(typeof(LoaiNguyenLieu), typeof(LoaiNguyenLieuRespond));
         CreateMap(typeof(RequestAddLoaiNguyenLieu), typeof(LoaiNguyenLieu));
         CreateMap(typeof(RequestUpdateLoaiNguyenLieu), typeof(LoaiNguyenLieu));
 
@@ -69,7 +69,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateDonViTinh), typeof(DonViTinh));
 
         //Nguyên liệu
-        CreateMap(typeof(NguyenLieu), typeof(NguyenLieuRespond));
+        // CreateMap(typeof(NguyenLieu), typeof(NguyenLieuRespond));
         CreateMap(typeof(RequestAddNguyenLieu), typeof(NguyenLieu));
         CreateMap(typeof(RequestUpdateNguyenLieu), typeof(NguyenLieu));
 

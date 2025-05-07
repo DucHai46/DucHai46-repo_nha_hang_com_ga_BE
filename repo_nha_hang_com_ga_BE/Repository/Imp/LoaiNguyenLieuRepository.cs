@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -16,6 +17,7 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
 {
     private readonly IMongoCollection<LoaiNguyenLieu> _collection;
     private readonly IMapper _mapper;
+    private readonly IMongoCollection<DanhMucNguyenLieu> _collectionDanhMucNguyenLieu;
 
     public LoaiNguyenLieuRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
     {
@@ -23,6 +25,7 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<LoaiNguyenLieu>("LoaiNguyenLieu");
+        _collectionDanhMucNguyenLieu = database.GetCollection<DanhMucNguyenLieu>("DanhMucNguyenLieu");
         _mapper = mapper;
     }
 
@@ -37,7 +40,7 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
 
             if (!string.IsNullOrEmpty(request.danhMucNguyenLieuId))
             {
-                filter &= Builders<LoaiNguyenLieu>.Filter.Eq(x => x.danhMucNguyenLieu!.Id, request.danhMucNguyenLieuId);
+                filter &= Builders<LoaiNguyenLieu>.Filter.Eq(x => x.danhMucNguyenLieu, request.danhMucNguyenLieuId);
             }
 
             if (!string.IsNullOrEmpty(request.tenLoai))
@@ -51,7 +54,7 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 .Include(x => x.danhMucNguyenLieu)
                 .Include(x => x.moTa);
 
-            var findOptions = new FindOptions<LoaiNguyenLieu, LoaiNguyenLieuRespond>
+            var findOptions = new FindOptions<LoaiNguyenLieu, LoaiNguyenLieu>
             {
                 Projection = projection
             };
@@ -72,11 +75,38 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var loaiNguyenLieus = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var danhMucNguyenLieuIds = loaiNguyenLieus.Select(x => x.danhMucNguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var danhMucNguyenLieuFilter = Builders<DanhMucNguyenLieu>.Filter.In(x => x.Id, danhMucNguyenLieuIds);
+                var danhMucNguyenLieuProjection = Builders<DanhMucNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDanhMuc);
+                var danhMucNguyenLieus = await _collectionDanhMucNguyenLieu.Find(danhMucNguyenLieuFilter)
+                    .Project<DanhMucNguyenLieu>(danhMucNguyenLieuProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var danhMucNguyenLieuDict = danhMucNguyenLieus.ToDictionary(x => x.Id, x => x.tenDanhMuc);
+
+                // Map dữ liệu
+                var loaiNguyenLieuResponds = loaiNguyenLieus.Select(loaiNguyenLieu => new LoaiNguyenLieuRespond
+                {
+                    id = loaiNguyenLieu.Id,
+                    tenLoai = loaiNguyenLieu.tenLoai,
+                    danhMucNguyenLieu = new IdName
+                    {
+                        Id = loaiNguyenLieu.danhMucNguyenLieu,
+                        Name = loaiNguyenLieu.danhMucNguyenLieu != null && danhMucNguyenLieuDict.ContainsKey(loaiNguyenLieu.danhMucNguyenLieu) ? danhMucNguyenLieuDict[loaiNguyenLieu.danhMucNguyenLieu] : null
+                    }
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<LoaiNguyenLieuRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = loaiNguyenLieus
+                    Data = loaiNguyenLieuResponds
                 };
 
                 return new RespondAPIPaging<List<LoaiNguyenLieuRespond>>(
@@ -89,12 +119,39 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var loaiNguyenLieus = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var danhMucNguyenLieuIds = loaiNguyenLieus.Select(x => x.danhMucNguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var danhMucNguyenLieuFilter = Builders<DanhMucNguyenLieu>.Filter.In(x => x.Id, danhMucNguyenLieuIds);
+                var danhMucNguyenLieuProjection = Builders<DanhMucNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDanhMuc);
+                var danhMucNguyenLieus = await _collectionDanhMucNguyenLieu.Find(danhMucNguyenLieuFilter)
+                    .Project<DanhMucNguyenLieu>(danhMucNguyenLieuProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var danhMucNguyenLieuDict = danhMucNguyenLieus.ToDictionary(x => x.Id, x => x.tenDanhMuc);
+
+                // Map dữ liệu
+                var loaiNguyenLieuResponds = loaiNguyenLieus.Select(loaiNguyenLieu => new LoaiNguyenLieuRespond
+                {
+                    id = loaiNguyenLieu.Id,
+                    tenLoai = loaiNguyenLieu.tenLoai,
+                    danhMucNguyenLieu = new IdName
+                    {
+                        Id = loaiNguyenLieu.danhMucNguyenLieu,
+                        Name = loaiNguyenLieu.danhMucNguyenLieu != null && danhMucNguyenLieuDict.ContainsKey(loaiNguyenLieu.danhMucNguyenLieu) ? danhMucNguyenLieuDict[loaiNguyenLieu.danhMucNguyenLieu] : null
+                    }
+                }).ToList();
+
                 return new RespondAPIPaging<List<LoaiNguyenLieuRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<LoaiNguyenLieuRespond>>
                     {
-                        Data = loaiNguyenLieus,
-                        Paging = new PagingDetail(1, loaiNguyenLieus.Count, loaiNguyenLieus.Count)
+                        Data = loaiNguyenLieuResponds,
+                        Paging = new PagingDetail(1, loaiNguyenLieuResponds.Count, loaiNguyenLieuResponds.Count)
                     }
                 );
             }
@@ -122,7 +179,17 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 );
             }
 
-            var loaiNguyenLieuRespond = _mapper.Map<LoaiNguyenLieuRespond>(loaiNguyenLieu);
+            var danhMucNguyenLieu = await _collectionDanhMucNguyenLieu.Find(x => x.Id == loaiNguyenLieu.danhMucNguyenLieu).FirstOrDefaultAsync();
+            var loaiNguyenLieuRespond = new LoaiNguyenLieuRespond
+            {
+                id = loaiNguyenLieu.Id,
+                tenLoai = loaiNguyenLieu.tenLoai,
+                danhMucNguyenLieu = new IdName
+                {
+                    Id = danhMucNguyenLieu.Id,
+                    Name = danhMucNguyenLieu.tenDanhMuc
+                }
+            };
 
             return new RespondAPI<LoaiNguyenLieuRespond>(
                 ResultRespond.Succeeded,
@@ -154,8 +221,17 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
 
             await _collection.InsertOneAsync(newLoaiNguyenLieu);
 
-            var loaiNguyenLieuRespond = _mapper.Map<LoaiNguyenLieuRespond>(newLoaiNguyenLieu);
-
+            var danhMucNguyenLieu = await _collectionDanhMucNguyenLieu.Find(x => x.Id == newLoaiNguyenLieu.danhMucNguyenLieu).FirstOrDefaultAsync();
+            var loaiNguyenLieuRespond = new LoaiNguyenLieuRespond
+            {
+                id = newLoaiNguyenLieu.Id,
+                tenLoai = newLoaiNguyenLieu.tenLoai,
+                danhMucNguyenLieu = new IdName
+                {
+                    Id = newLoaiNguyenLieu.danhMucNguyenLieu,
+                    Name = danhMucNguyenLieu.tenDanhMuc
+                }
+            };
             return new RespondAPI<LoaiNguyenLieuRespond>(
                 ResultRespond.Succeeded,
                 "Tạo loại nguyên liệu thành công.",
@@ -204,8 +280,17 @@ public class LoaiNguyenLieuRepository : ILoaiNguyenLieuRepository
                 );
             }
 
-            var loaiNguyenLieuRespond = _mapper.Map<LoaiNguyenLieuRespond>(loaiNguyenLieu);
-
+            var danhMucNguyenLieu = await _collectionDanhMucNguyenLieu.Find(x => x.Id == loaiNguyenLieu.danhMucNguyenLieu).FirstOrDefaultAsync();
+            var loaiNguyenLieuRespond = new LoaiNguyenLieuRespond
+            {
+                id = loaiNguyenLieu.Id,
+                tenLoai = loaiNguyenLieu.tenLoai,
+                danhMucNguyenLieu = new IdName
+                {
+                    Id = loaiNguyenLieu.danhMucNguyenLieu,
+                    Name = danhMucNguyenLieu.tenDanhMuc
+                }
+            };
             return new RespondAPI<LoaiNguyenLieuRespond>(
                 ResultRespond.Succeeded,
                 "Cập nhật loại nguyên liệu thành công.",
