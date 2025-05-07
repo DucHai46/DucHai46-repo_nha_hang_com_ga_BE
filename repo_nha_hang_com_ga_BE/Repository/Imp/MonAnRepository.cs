@@ -121,7 +121,8 @@ public class MonAnRepository : IMonAnRepository
                 var giamGiaFilter = Builders<GiamGia>.Filter.In(x => x.Id, giamGiaIds);
                 var giamGiaProjection = Builders<GiamGia>.Projection
                     .Include(x => x.Id)
-                    .Include(x => x.tenGiamGia);
+                    .Include(x => x.tenGiamGia)
+                    .Include(x => x.giaTri);
                 var giamGias = await _collectionGiamGia.Find(giamGiaFilter)
                     .Project<GiamGia>(giamGiaProjection)
                     .ToListAsync();
@@ -202,7 +203,8 @@ public class MonAnRepository : IMonAnRepository
                 var giamGiaFilter = Builders<GiamGia>.Filter.In(x => x.Id, giamGiaIds);
                 var giamGiaProjection = Builders<GiamGia>.Projection
                     .Include(x => x.Id)
-                    .Include(x => x.tenGiamGia);
+                    .Include(x => x.tenGiamGia)
+                    .Include(x => x.giaTri);
                 var giamGias = await _collectionGiamGia.Find(giamGiaFilter)
                     .Project<GiamGia>(giamGiaProjection)
                     .ToListAsync();
