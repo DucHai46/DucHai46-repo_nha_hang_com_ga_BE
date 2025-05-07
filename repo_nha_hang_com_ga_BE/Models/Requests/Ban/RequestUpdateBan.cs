@@ -6,7 +6,7 @@ public class RequestUpdateBan
 {
     public string? tenBan { get; set; }
 
-    public IdName? loaiBan { get; set; }
+    public string? loaiBan { get; set; }
 
     public TrangThaiBan? trangThai { get; set; }
 }

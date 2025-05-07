@@ -109,7 +109,8 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateMonAn), typeof(MonAn));
 
         //Ban
-        CreateMap(typeof(Ban), typeof(BanRespond));
+        CreateMap<Ban, BanRespond>()
+            .ForMember(dest => dest.loaiBan, opt => opt.Ignore());
         CreateMap(typeof(RequestAddBan), typeof(Ban));
         CreateMap(typeof(RequestUpdateBan), typeof(Ban));
 
