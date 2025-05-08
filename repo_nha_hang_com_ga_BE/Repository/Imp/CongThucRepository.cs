@@ -101,7 +101,14 @@ public class CongThucRepository : ICongThucRepository
                         .Project<NguyenLieu>(nguyenLieuProjection)
                         .ToListAsync();
 
-                    nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
+                    var newDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                    foreach (var item in newDict)
+                    {
+                        if (!nguyenLieuDict.ContainsKey(item.Key))
+                        {
+                            nguyenLieuDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
                 var congThucResponds = congThucs.Select(congThuc => new CongThucRespond
@@ -172,7 +179,14 @@ public class CongThucRepository : ICongThucRepository
                         .Project<NguyenLieu>(nguyenLieuProjection)
                         .ToListAsync();
 
-                    nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
+                    var newDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                    foreach (var item in newDict)
+                    {
+                        if (!nguyenLieuDict.ContainsKey(item.Key))
+                        {
+                            nguyenLieuDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
 
