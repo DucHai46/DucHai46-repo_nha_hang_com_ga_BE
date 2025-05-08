@@ -44,6 +44,8 @@ using repo_nha_hang_com_ga_BE.Models.Requests.DonDatBan;
 using repo_nha_hang_com_ga_BE.Models.Responds.DonDatBan;
 using repo_nha_hang_com_ga_BE.Models.Requests.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Responds.DonOrder;
+using repo_nha_hang_com_ga_BE.Models.Requests.LoaiDon;
+using repo_nha_hang_com_ga_BE.Models.Responds.LoaiDon;
 
 
 namespace repo_nha_hang_com_ga_BE.Models.Common.Services;
@@ -160,8 +162,13 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateDonDatBan), typeof(DonDatBan));
 
         //Đơn Order
-        CreateMap(typeof(DonOrder), typeof(DonOrderRespond));
-        CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
-        CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
+        // CreateMap(typeof(DonOrder), typeof(DonOrderRespond));
+        // CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
+        // CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
+
+        //Loại đơn order
+        // CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
+        // CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
+        // CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
     }
 }
