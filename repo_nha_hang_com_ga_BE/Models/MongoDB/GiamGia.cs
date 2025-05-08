@@ -9,5 +9,5 @@ public class GiamGia : BaseMongoDb
     public string? moTa { get; set; }
     public DateTimeOffset ngayBatDau { get; set; }
     public DateTimeOffset ngayKetThuc { get; set; }
-    public int? giaTri { get; set; }
+    public string? giaTri { get; set; }
 }

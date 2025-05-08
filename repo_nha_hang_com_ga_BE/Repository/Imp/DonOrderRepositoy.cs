@@ -39,7 +39,7 @@ public class DonOrderRepository : IDonOrderRepository
 
             if (!string.IsNullOrEmpty(request.tenDon))
             {
-                filter &= Builders<DonOrder>.Filter.Eq(x => x.tenDon, request.tenDon);
+                filter &= Builders<DonOrder>.Filter.Regex(x => x.tenDon, request.tenDon);
             }
 
             if (!string.IsNullOrEmpty(request.loaiDon))
