@@ -8,5 +8,5 @@ public class RequestAddTuDo
 
     public string? moTa { get; set; }
 
-    public IdName? loaiTuDo { get; set; }
+    public string? loaiTuDo { get; set; }
 }

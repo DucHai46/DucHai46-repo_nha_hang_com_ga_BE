@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -16,13 +17,14 @@ public class TuDoRepository : ITuDoRepository
 {
     private readonly IMongoCollection<TuDo> _collection;
     private readonly IMapper _mapper;
-
+    private readonly IMongoCollection<LoaiTuDo> _collectionLoaiTuDo;
     public TuDoRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
     {
         var mongoClientSettings = settings.Value;
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<TuDo>("TuDo");
+        _collectionLoaiTuDo = database.GetCollection<LoaiTuDo>("LoaiTuDo");
         _mapper = mapper;
     }
 
@@ -43,7 +45,7 @@ public class TuDoRepository : ITuDoRepository
 
             if (!string.IsNullOrEmpty(request.loaiTuDoId))
             {
-                filter &= Builders<TuDo>.Filter.Eq(x => x.loaiTuDo!.Id, request.loaiTuDoId);
+                filter &= Builders<TuDo>.Filter.Eq(x => x.loaiTuDo, request.loaiTuDoId);
             }
 
             var projection = Builders<TuDo>.Projection
@@ -52,7 +54,7 @@ public class TuDoRepository : ITuDoRepository
                 .Include(x => x.moTa)
                 .Include(x => x.loaiTuDo);
 
-            var findOptions = new FindOptions<TuDo, TuDoRespond>
+            var findOptions = new FindOptions<TuDo, TuDo>
             {
                 Projection = projection
             };
@@ -73,11 +75,39 @@ public class TuDoRepository : ITuDoRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var tuDos = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var loaiTuDoIds = tuDos.Select(x => x.loaiTuDo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiTuDoFilter = Builders<LoaiTuDo>.Filter.In(x => x.Id, loaiTuDoIds);
+                var loaiTuDoProjection = Builders<LoaiTuDo>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiTuDos = await _collectionLoaiTuDo.Find(loaiTuDoFilter)
+                    .Project<LoaiTuDo>(loaiTuDoProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiTuDoDict = loaiTuDos.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                // Map dữ liệu
+                var tuDoResponds = tuDos.Select(tuDo => new TuDoRespond
+                {
+                    id = tuDo.Id,
+                    tenTuDo = tuDo.tenTuDo,
+                    moTa = tuDo.moTa,
+                    loaiTuDo = new IdName
+                    {
+                        Id = tuDo.loaiTuDo,
+                        Name = tuDo.loaiTuDo != null && loaiTuDoDict.ContainsKey(tuDo.loaiTuDo) ? loaiTuDoDict[tuDo.loaiTuDo] : null
+                    }
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<TuDoRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = tuDos
+                    Data = tuDoResponds
                 };
 
                 return new RespondAPIPaging<List<TuDoRespond>>(
@@ -90,12 +120,40 @@ public class TuDoRepository : ITuDoRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var tuDos = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var loaiTuDoIds = tuDos.Select(x => x.loaiTuDo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiTuDoFilter = Builders<LoaiTuDo>.Filter.In(x => x.Id, loaiTuDoIds);
+                var loaiTuDoProjection = Builders<LoaiTuDo>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiTuDos = await _collectionLoaiTuDo.Find(loaiTuDoFilter)
+                    .Project<LoaiTuDo>(loaiTuDoProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiTuDoDict = loaiTuDos.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                // Map dữ liệu
+                var tuDoResponds = tuDos.Select(tuDo => new TuDoRespond
+                {
+                    id = tuDo.Id,
+                    tenTuDo = tuDo.tenTuDo,
+                    moTa = tuDo.moTa,
+                    loaiTuDo = new IdName
+                    {
+                        Id = tuDo.loaiTuDo,
+                        Name = tuDo.loaiTuDo != null && loaiTuDoDict.ContainsKey(tuDo.loaiTuDo) ? loaiTuDoDict[tuDo.loaiTuDo] : null
+                    }
+                }).ToList();
+
                 return new RespondAPIPaging<List<TuDoRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<TuDoRespond>>
                     {
-                        Data = tuDos,
-                        Paging = new PagingDetail(1, tuDos.Count, tuDos.Count)
+                        Data = tuDoResponds,
+                        Paging = new PagingDetail(1, tuDoResponds.Count, tuDoResponds.Count)
                     }
                 );
             }
@@ -123,7 +181,13 @@ public class TuDoRepository : ITuDoRepository
                 );
             }
 
+            var loaiTuDo = await _collectionLoaiTuDo.Find(x => x.Id == tuDo.loaiTuDo).FirstOrDefaultAsync();
             var tuDoRespond = _mapper.Map<TuDoRespond>(tuDo);
+            tuDoRespond.loaiTuDo = new IdName
+            {
+                Id = loaiTuDo.Id,
+                Name = loaiTuDo.tenLoai
+            };
 
             return new RespondAPI<TuDoRespond>(
                 ResultRespond.Succeeded,
@@ -155,7 +219,13 @@ public class TuDoRepository : ITuDoRepository
 
             await _collection.InsertOneAsync(newTuDo);
 
+            var loaiTuDo = await _collectionLoaiTuDo.Find(x => x.Id == newTuDo.loaiTuDo).FirstOrDefaultAsync();
             var tuDoRespond = _mapper.Map<TuDoRespond>(newTuDo);
+            tuDoRespond.loaiTuDo = new IdName
+            {
+                Id = loaiTuDo.Id,
+                Name = loaiTuDo.tenLoai
+            };
 
             return new RespondAPI<TuDoRespond>(
                 ResultRespond.Succeeded,
@@ -205,7 +275,13 @@ public class TuDoRepository : ITuDoRepository
                 );
             }
 
+            var loaiTuDo = await _collectionLoaiTuDo.Find(x => x.Id == tuDo.loaiTuDo).FirstOrDefaultAsync();
             var tuDoRespond = _mapper.Map<TuDoRespond>(tuDo);
+            tuDoRespond.loaiTuDo = new IdName
+            {
+                Id = loaiTuDo.Id,
+                Name = loaiTuDo.tenLoai
+            };
 
             return new RespondAPI<TuDoRespond>(
                 ResultRespond.Succeeded,

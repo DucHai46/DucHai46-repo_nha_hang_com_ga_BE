@@ -138,7 +138,8 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateLoaiTuDo), typeof(LoaiTuDo));
 
         //Tủ đồ
-        CreateMap(typeof(TuDo), typeof(TuDoRespond));
+        CreateMap<TuDo, TuDoRespond>()
+            .ForMember(dest => dest.loaiTuDo, opt => opt.Ignore());
         CreateMap(typeof(RequestAddTuDo), typeof(TuDo));
         CreateMap(typeof(RequestUpdateTuDo), typeof(TuDo));
 
