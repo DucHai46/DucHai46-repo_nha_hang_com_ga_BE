@@ -101,7 +101,7 @@ public class CongThucRepository : ICongThucRepository
                         .Project<NguyenLieu>(nguyenLieuProjection)
                         .ToListAsync();
 
-                    nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                    nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
                 }
 
                 var congThucResponds = congThucs.Select(congThuc => new CongThucRespond
@@ -172,7 +172,7 @@ public class CongThucRepository : ICongThucRepository
                         .Project<NguyenLieu>(nguyenLieuProjection)
                         .ToListAsync();
 
-                    nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                    nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
                 }
 
 
@@ -261,7 +261,7 @@ public class CongThucRepository : ICongThucRepository
                     .Project<NguyenLieu>(nguyenLieuProjection)
                     .ToListAsync();
 
-                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
             }
 
             var congThucRespond = new CongThucRespond();
@@ -349,7 +349,7 @@ public class CongThucRepository : ICongThucRepository
                     .Project<NguyenLieu>(nguyenLieuProjection)
                     .ToListAsync();
 
-                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
             }
 
             congThucRespond.loaiNguyenLieus = newCongThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
@@ -450,7 +450,7 @@ public class CongThucRepository : ICongThucRepository
                     .Project<NguyenLieu>(nguyenLieuProjection)
                     .ToListAsync();
 
-                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                nguyenLieuDict = nguyenLieuDict.Concat(nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu)).ToDictionary(x => x.Key, x => x.Value);
             }
 
             congThucRespond.loaiNguyenLieus = congThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
