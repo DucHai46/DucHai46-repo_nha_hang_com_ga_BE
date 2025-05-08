@@ -136,12 +136,12 @@ public class MonAnRepository : IMonAnRepository
                     loaiMonAn = new IdName
                     {
                         Id = x.loaiMonAn,
-                        Name = loaiMonAnDict[x.loaiMonAn]
+                        Name = loaiMonAns.FirstOrDefault(y => y.Id == x.loaiMonAn)?.tenLoai
                     },
                     congThuc = new IdName
                     {
                         Id = x.congThuc,
-                        Name = congThucDict[x.congThuc]
+                        Name = congThucs.FirstOrDefault(y => y.Id == x.congThuc)?.tenCongThuc
                     },
                     giamGia = new GiamGiaMonAnRespond
                     {
@@ -218,12 +218,12 @@ public class MonAnRepository : IMonAnRepository
                     loaiMonAn = new IdName
                     {
                         Id = x.loaiMonAn,
-                        Name = loaiMonAnDict[x.loaiMonAn]
+                        Name = loaiMonAns.FirstOrDefault(y => y.Id == x.loaiMonAn)?.tenLoai
                     },
                     congThuc = new IdName
                     {
                         Id = x.congThuc,
-                        Name = congThucDict[x.congThuc]
+                        Name = congThucs.FirstOrDefault(y => y.Id == x.congThuc)?.tenCongThuc
                     },
                     giamGia = new GiamGiaMonAnRespond
                     {
