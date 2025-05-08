@@ -106,9 +106,12 @@ public class ComboRepository : IComboRepository
                         .Include(x => x.hinhAnh)
                         .Include(x => x.giaTien)
                         .Include(x => x.moTa);
-                    monAns = await _collectionMonAn.Find(monAnFilter)
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
+
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
 
                     var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
                     foreach (var item in newDict)
@@ -188,9 +191,12 @@ public class ComboRepository : IComboRepository
                         .Include(x => x.hinhAnh)
                         .Include(x => x.giaTien)
                         .Include(x => x.moTa);
-                    monAns = await _collectionMonAn.Find(monAnFilter)
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
+
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
 
                     var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
                     foreach (var item in newDict)
