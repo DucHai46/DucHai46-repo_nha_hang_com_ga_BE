@@ -110,7 +110,14 @@ public class ComboRepository : IComboRepository
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
 
-                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
                 var comboResponds = combos.Select(combo => new ComboRespond
@@ -185,7 +192,14 @@ public class ComboRepository : IComboRepository
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
 
-                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
                 var comboResponds = combos.Select(combo => new ComboRespond
