@@ -16,5 +16,5 @@ public class RequestUpdateMonAn
 
     public string? hinhAnh { get; set; }
 
-    public string? giaTien { get; set; }
+    public int? giaTien { get; set; }
 }

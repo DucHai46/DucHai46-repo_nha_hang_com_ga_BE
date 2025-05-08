@@ -45,7 +45,7 @@ public class ComboRepository : IComboRepository
                 filter &= Builders<Combo>.Filter.Regex(x => x.tenCombo, new BsonRegularExpression($".*{request.tenCombo}.*"));
             }
 
-            if (!string.IsNullOrEmpty(request.giaTien))
+            if (request.giaTien.HasValue)
             {
                 filter &= Builders<Combo>.Filter.Regex(x => x.giaTien, new BsonRegularExpression($".*{request.giaTien}.*"));
             }

@@ -14,5 +14,5 @@ public class GiamGiaRespond
     public string? moTa { get; set; }
     public DateTimeOffset ngayBatDau { get; set; }
     public DateTimeOffset ngayKetThuc { get; set; }
-    public string? giaTri { get; set; }
+    public int? giaTri { get; set; }
 }

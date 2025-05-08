@@ -14,7 +14,7 @@ public class ComboRespond
     public string? tenCombo { get; set; }
     public List<LoaiMonAnMenuRespond>? loaiMonAns { get; set; }
     public string? hinhAnh { get; set; }
-    public string? giaTien { get; set; }
+    public int? giaTien { get; set; }
     public string? moTa { get; set; }
 }
 
@@ -30,6 +30,6 @@ public class MonAnMenuRespond
     public string? id { get; set; }
     public string? tenMonAn { get; set; }
     public string? hinhAnh { get; set; }
-    public string? giaTien { get; set; }
+    public int? giaTien { get; set; }
     public string? moTa { get; set; }
 }
