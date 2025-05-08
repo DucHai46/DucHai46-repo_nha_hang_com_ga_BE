@@ -18,11 +18,16 @@ public class MonAnRespond
 
     public IdName? congThuc { get; set; }
 
-    public GiamGiaMonAn? giamGia { get; set; }
+    public GiamGiaMonAnRespond? giamGia { get; set; }
 
     public string? hinhAnh { get; set; }
 
     public string? giaTien { get; set; }
 
     public string? moTa { get; set; }
+}
+
+public class GiamGiaMonAnRespond : IdName
+{
+    public string? giaTri { get; set; }
 }

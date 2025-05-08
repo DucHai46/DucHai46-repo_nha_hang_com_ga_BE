@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -15,6 +16,7 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class BanRepository : IBanRepository
 {
     private readonly IMongoCollection<Ban> _collection;
+    private readonly IMongoCollection<LoaiBan> _collectionLoaiBan;
     private readonly IMapper _mapper;
 
     public BanRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -23,6 +25,7 @@ public class BanRepository : IBanRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<Ban>("Ban");
+        _collectionLoaiBan = database.GetCollection<LoaiBan>("LoaiBan");
         _mapper = mapper;
     }
 
@@ -42,7 +45,7 @@ public class BanRepository : IBanRepository
 
             if (!string.IsNullOrEmpty(request.idLoaiBan))
             {
-                filter &= Builders<Ban>.Filter.Eq(x => x.loaiBan!.Id, request.idLoaiBan);
+                filter &= Builders<Ban>.Filter.Eq(x => x.loaiBan, request.idLoaiBan);
             }
 
             if (request.trangThai != null)
@@ -56,7 +59,7 @@ public class BanRepository : IBanRepository
                 .Include(x => x.loaiBan)
                 .Include(x => x.trangThai);
 
-            var findOptions = new FindOptions<Ban, BanRespond>
+            var findOptions = new FindOptions<Ban, Ban>
             {
                 Projection = projection
             };
@@ -66,7 +69,6 @@ public class BanRepository : IBanRepository
                 long totalRecords = await collection.CountDocumentsAsync(filter);
 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / request.PageSize);
-
                 int currentPage = request.PageNumber;
                 if (currentPage < 1) currentPage = 1;
                 if (currentPage > totalPages) currentPage = totalPages;
@@ -77,11 +79,39 @@ public class BanRepository : IBanRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var bans = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var loaiBanIds = bans.Select(x => x.loaiBan).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                // Map dữ liệu
+                var banResponds = bans.Select(ban => new BanRespond
+                {
+                    id = ban.Id,
+                    tenBan = ban.tenBan,
+                    trangThai = ban.trangThai,
+                    loaiBan = new IdName
+                    {
+                        Id = ban.loaiBan,
+                        Name = ban.loaiBan != null && loaiBanDict.ContainsKey(ban.loaiBan) ? loaiBanDict[ban.loaiBan] : null
+                    }
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<BanRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = bans
+                    Data = banResponds
                 };
 
                 return new RespondAPIPaging<List<BanRespond>>(
@@ -94,12 +124,40 @@ public class BanRepository : IBanRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var bans = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var loaiBanIds = bans.Select(x => x.loaiBan).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                // Map dữ liệu
+                var banResponds = bans.Select(ban => new BanRespond
+                {
+                    id = ban.Id,
+                    tenBan = ban.tenBan,
+                    trangThai = ban.trangThai,
+                    loaiBan = new IdName
+                    {
+                        Id = ban.loaiBan,
+                        Name = ban.loaiBan != null && loaiBanDict.ContainsKey(ban.loaiBan) ? loaiBanDict[ban.loaiBan] : null
+                    }
+                }).ToList();
+
                 return new RespondAPIPaging<List<BanRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<BanRespond>>
                     {
-                        Data = bans,
-                        Paging = new PagingDetail(1, bans.Count, bans.Count)
+                        Data = banResponds,
+                        Paging = new PagingDetail(1, banResponds.Count(), banResponds.Count())
                     }
                 );
             }
@@ -126,8 +184,13 @@ public class BanRepository : IBanRepository
                     "Không tìm thấy bàn với ID đã cung cấp."
                 );
             }
-
+            var loaiBan = await _collectionLoaiBan.Find(x => x.Id == ban.loaiBan).FirstOrDefaultAsync();
             var banRespond = _mapper.Map<BanRespond>(ban);
+            banRespond.loaiBan = new IdName
+            {
+                Id = loaiBan.Id,
+                Name = loaiBan.tenLoai
+            };
 
             return new RespondAPI<BanRespond>(
                 ResultRespond.Succeeded,
@@ -158,8 +221,13 @@ public class BanRepository : IBanRepository
             // newDanhMucNguyenLieu.updatedUser = currentUser.Id;
 
             await _collection.InsertOneAsync(newBan);
-
+            var loaiBan = await _collectionLoaiBan.Find(x => x.Id == newBan.loaiBan).FirstOrDefaultAsync();
             var banRespond = _mapper.Map<BanRespond>(newBan);
+            banRespond.loaiBan = new IdName
+            {
+                Id = loaiBan.Id,
+                Name = loaiBan.tenLoai
+            };
 
             return new RespondAPI<BanRespond>(
                 ResultRespond.Succeeded,
@@ -210,6 +278,12 @@ public class BanRepository : IBanRepository
             }
 
             var banRespond = _mapper.Map<BanRespond>(ban);
+            var loaiBan = await _collectionLoaiBan.Find(x => x.Id == ban.loaiBan).FirstOrDefaultAsync();
+            banRespond.loaiBan = new IdName
+            {
+                Id = loaiBan.Id,
+                Name = loaiBan.tenLoai
+            };
 
             return new RespondAPI<BanRespond>(
                 ResultRespond.Succeeded,

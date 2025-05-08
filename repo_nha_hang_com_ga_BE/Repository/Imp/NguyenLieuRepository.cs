@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -15,6 +16,9 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class NguyenLieuRepository : INguyenLieuRepository
 {
     private readonly IMongoCollection<NguyenLieu> _collection;
+    private readonly IMongoCollection<LoaiNguyenLieu> _collectionLoaiNguyenLieu;
+    private readonly IMongoCollection<DonViTinh> _collectionDonViTinh;
+    private readonly IMongoCollection<TuDo> _collectionTuDo;
     private readonly IMapper _mapper;
 
     public NguyenLieuRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -23,6 +27,9 @@ public class NguyenLieuRepository : INguyenLieuRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<NguyenLieu>("NguyenLieu");
+        _collectionLoaiNguyenLieu = database.GetCollection<LoaiNguyenLieu>("LoaiNguyenLieu");
+        _collectionDonViTinh = database.GetCollection<DonViTinh>("DonViTinh");
+        _collectionTuDo = database.GetCollection<TuDo>("TuDo");
         _mapper = mapper;
     }
 
@@ -37,12 +44,12 @@ public class NguyenLieuRepository : INguyenLieuRepository
 
             if (!string.IsNullOrEmpty(request.loaiNguyenLieuId))
             {
-                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.loaiNguyenLieu!.Id, request.loaiNguyenLieuId);
+                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.loaiNguyenLieu, request.loaiNguyenLieuId);
             }
 
             if (!string.IsNullOrEmpty(request.donViTinhId))
             {
-                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.donViTinh!.Id, request.donViTinhId);
+                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.donViTinh, request.donViTinhId);
             }
 
             if (!string.IsNullOrEmpty(request.tenNguyenLieu))
@@ -57,10 +64,11 @@ public class NguyenLieuRepository : INguyenLieuRepository
 
             if (!string.IsNullOrEmpty(request.tuDoId))
             {
-                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.tuDo!.Id, request.tuDoId);
+                filter &= Builders<NguyenLieu>.Filter.Eq(x => x.tuDo, request.tuDoId);
             }
 
-            if(request.trangThai != null){
+            if (request.trangThai != null)
+            {
                 filter &= Builders<NguyenLieu>.Filter.Eq(x => x.trangThai, request.trangThai);
             }
 
@@ -75,7 +83,7 @@ public class NguyenLieuRepository : INguyenLieuRepository
                 .Include(x => x.donViTinh)
                 .Include(x => x.tuDo);
 
-            var findOptions = new FindOptions<NguyenLieu, NguyenLieuRespond>
+            var findOptions = new FindOptions<NguyenLieu, NguyenLieu>
             {
                 Projection = projection
             };
@@ -94,13 +102,77 @@ public class NguyenLieuRepository : INguyenLieuRepository
                 findOptions.Limit = request.PageSize;
 
                 var cursor = await collection.FindAsync(filter, findOptions);
-                var loaiNguyenLieus = await cursor.ToListAsync();
+                var nguyenLieus = await cursor.ToListAsync();
+
+                // Lấy danh sách ID loại bàn
+                var loaiNguyenLieuIds = nguyenLieus.Select(x => x.loaiNguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+                var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                    .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                var donViTinhIds = nguyenLieus.Select(x => x.donViTinh).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var donViTinhFilter = Builders<DonViTinh>.Filter.In(x => x.Id, donViTinhIds);
+                var donViTinhProjection = Builders<DonViTinh>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDonViTinh);
+                var donViTinhs = await _collectionDonViTinh.Find(donViTinhFilter)
+                    .Project<DonViTinh>(donViTinhProjection)
+                    .ToListAsync();
+
+                var donViTinhDict = donViTinhs.ToDictionary(x => x.Id, x => x.tenDonViTinh);
+
+                var tuDoIds = nguyenLieus.Select(x => x.tuDo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var tuDoFilter = Builders<TuDo>.Filter.In(x => x.Id, tuDoIds);
+                var tuDoProjection = Builders<TuDo>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenTuDo);
+                var tuDos = await _collectionTuDo.Find(tuDoFilter)
+                    .Project<TuDo>(tuDoProjection)
+                    .ToListAsync();
+
+                var tuDoDict = tuDos.ToDictionary(x => x.Id, x => x.tenTuDo);
+
+                var nguyenLieuResponds = nguyenLieus.Select(nguyenLieu => new NguyenLieuRespond
+                {
+                    id = nguyenLieu.Id,
+                    tenNguyenLieu = nguyenLieu.tenNguyenLieu,
+                    moTa = nguyenLieu.moTa,
+                    soLuong = nguyenLieu.soLuong,
+                    trangThai = nguyenLieu.trangThai,
+                    loaiNguyenLieu = new IdName
+                    {
+                        Id = nguyenLieu.loaiNguyenLieu,
+                        Name = loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu]
+                    },
+                    donViTinh = new IdName
+                    {
+                        Id = nguyenLieu.donViTinh,
+                        Name = donViTinhDict[nguyenLieu.donViTinh]
+                    },
+                    tuDo = new IdName
+                    {
+                        Id = nguyenLieu.tuDo,
+                        Name = tuDoDict[nguyenLieu.tuDo]
+                    }
+                }).ToList();
+
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<NguyenLieuRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = loaiNguyenLieus
+                    Data = nguyenLieuResponds
                 };
 
                 return new RespondAPIPaging<List<NguyenLieuRespond>>(
@@ -113,12 +185,75 @@ public class NguyenLieuRepository : INguyenLieuRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var nguyenLieus = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var loaiNguyenLieuIds = nguyenLieus.Select(x => x.loaiNguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+                var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                    .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                var donViTinhIds = nguyenLieus.Select(x => x.donViTinh).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var donViTinhFilter = Builders<DonViTinh>.Filter.In(x => x.Id, donViTinhIds);
+                var donViTinhProjection = Builders<DonViTinh>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDonViTinh);
+                var donViTinhs = await _collectionDonViTinh.Find(donViTinhFilter)
+                    .Project<DonViTinh>(donViTinhProjection)
+                    .ToListAsync();
+
+                var donViTinhDict = donViTinhs.ToDictionary(x => x.Id, x => x.tenDonViTinh);
+
+                var tuDoIds = nguyenLieus.Select(x => x.tuDo).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var tuDoFilter = Builders<TuDo>.Filter.In(x => x.Id, tuDoIds);
+                var tuDoProjection = Builders<TuDo>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenTuDo);
+                var tuDos = await _collectionTuDo.Find(tuDoFilter)
+                    .Project<TuDo>(tuDoProjection)
+                    .ToListAsync();
+
+                var tuDoDict = tuDos.ToDictionary(x => x.Id, x => x.tenTuDo);
+
+                var nguyenLieuResponds = nguyenLieus.Select(nguyenLieu => new NguyenLieuRespond
+                {
+                    id = nguyenLieu.Id,
+                    tenNguyenLieu = nguyenLieu.tenNguyenLieu,
+                    moTa = nguyenLieu.moTa,
+                    soLuong = nguyenLieu.soLuong,
+                    trangThai = nguyenLieu.trangThai,
+                    loaiNguyenLieu = new IdName
+                    {
+                        Id = nguyenLieu.loaiNguyenLieu,
+                        Name = loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu]
+                    },
+                    donViTinh = new IdName
+                    {
+                        Id = nguyenLieu.donViTinh,
+                        Name = donViTinhDict[nguyenLieu.donViTinh]
+                    },
+                    tuDo = new IdName
+                    {
+                        Id = nguyenLieu.tuDo,
+                        Name = tuDoDict[nguyenLieu.tuDo]
+                    }
+                }).ToList();
+
                 return new RespondAPIPaging<List<NguyenLieuRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<NguyenLieuRespond>>
                     {
-                        Data = nguyenLieus,
-                        Paging = new PagingDetail(1, nguyenLieus.Count, nguyenLieus.Count)
+                        Data = nguyenLieuResponds,
+                        Paging = new PagingDetail(1, nguyenLieuResponds.Count, nguyenLieuResponds.Count)
                     }
                 );
             }
@@ -146,7 +281,33 @@ public class NguyenLieuRepository : INguyenLieuRepository
                 );
             }
 
-            var nguyenLieuRespond = _mapper.Map<NguyenLieuRespond>(nguyenLieu);
+            var loaiNguyenLieu = await _collectionLoaiNguyenLieu.Find(x => x.Id == nguyenLieu.loaiNguyenLieu).FirstOrDefaultAsync();
+            var donViTinh = await _collectionDonViTinh.Find(x => x.Id == nguyenLieu.donViTinh).FirstOrDefaultAsync();
+            var tuDo = await _collectionTuDo.Find(x => x.Id == nguyenLieu.tuDo).FirstOrDefaultAsync();
+
+            var nguyenLieuRespond = new NguyenLieuRespond
+            {
+                id = nguyenLieu.Id,
+                tenNguyenLieu = nguyenLieu.tenNguyenLieu,
+                moTa = nguyenLieu.moTa,
+                soLuong = nguyenLieu.soLuong,
+                trangThai = nguyenLieu.trangThai,
+                loaiNguyenLieu = new IdName
+                {
+                    Id = loaiNguyenLieu.Id,
+                    Name = loaiNguyenLieu.tenLoai
+                },
+                donViTinh = new IdName
+                {
+                    Id = donViTinh.Id,
+                    Name = donViTinh.tenDonViTinh
+                },
+                tuDo = new IdName
+                {
+                    Id = tuDo.Id,
+                    Name = tuDo.tenTuDo
+                }
+            };
 
             return new RespondAPI<NguyenLieuRespond>(
                 ResultRespond.Succeeded,
@@ -178,7 +339,33 @@ public class NguyenLieuRepository : INguyenLieuRepository
 
             await _collection.InsertOneAsync(newNguyenLieu);
 
-            var nguyenLieuRespond = _mapper.Map<NguyenLieuRespond>(newNguyenLieu);
+            var loaiNguyenLieu = await _collectionLoaiNguyenLieu.Find(x => x.Id == newNguyenLieu.loaiNguyenLieu).FirstOrDefaultAsync();
+            var donViTinh = await _collectionDonViTinh.Find(x => x.Id == newNguyenLieu.donViTinh).FirstOrDefaultAsync();
+            var tuDo = await _collectionTuDo.Find(x => x.Id == newNguyenLieu.tuDo).FirstOrDefaultAsync();
+
+            var nguyenLieuRespond = new NguyenLieuRespond
+            {
+                id = newNguyenLieu.Id,
+                tenNguyenLieu = newNguyenLieu.tenNguyenLieu,
+                moTa = newNguyenLieu.moTa,
+                soLuong = newNguyenLieu.soLuong,
+                trangThai = newNguyenLieu.trangThai,
+                loaiNguyenLieu = new IdName
+                {
+                    Id = loaiNguyenLieu.Id,
+                    Name = loaiNguyenLieu.tenLoai
+                },
+                donViTinh = new IdName
+                {
+                    Id = donViTinh.Id,
+                    Name = donViTinh.tenDonViTinh
+                },
+                tuDo = new IdName
+                {
+                    Id = tuDo.Id,
+                    Name = tuDo.tenTuDo
+                }
+            };
 
             return new RespondAPI<NguyenLieuRespond>(
                 ResultRespond.Succeeded,
@@ -228,8 +415,33 @@ public class NguyenLieuRepository : INguyenLieuRepository
                 );
             }
 
-            var nguyenLieuRespond = _mapper.Map<NguyenLieuRespond>(nguyenLieu);
+            var loaiNguyenLieu = await _collectionLoaiNguyenLieu.Find(x => x.Id == nguyenLieu.loaiNguyenLieu).FirstOrDefaultAsync();
+            var donViTinh = await _collectionDonViTinh.Find(x => x.Id == nguyenLieu.donViTinh).FirstOrDefaultAsync();
+            var tuDo = await _collectionTuDo.Find(x => x.Id == nguyenLieu.tuDo).FirstOrDefaultAsync();
 
+            var nguyenLieuRespond = new NguyenLieuRespond
+            {
+                id = nguyenLieu.Id,
+                tenNguyenLieu = nguyenLieu.tenNguyenLieu,
+                moTa = nguyenLieu.moTa,
+                soLuong = nguyenLieu.soLuong,
+                trangThai = nguyenLieu.trangThai,
+                loaiNguyenLieu = new IdName
+                {
+                    Id = loaiNguyenLieu.Id,
+                    Name = loaiNguyenLieu.tenLoai
+                },
+                donViTinh = new IdName
+                {
+                    Id = donViTinh.Id,
+                    Name = donViTinh.tenDonViTinh
+                },
+                tuDo = new IdName
+                {
+                    Id = tuDo.Id,
+                    Name = tuDo.tenTuDo
+                }
+            };
             return new RespondAPI<NguyenLieuRespond>(
                 ResultRespond.Succeeded,
                 "Cập nhật nguyên liệu thành công.",

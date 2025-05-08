@@ -8,5 +8,5 @@ public class RequestAddLoaiMonAn
 
     public string? moTa { get; set; }
 
-    public IdName? danhMucMonAn { get; set; }
+    public string? danhMucMonAn { get; set; }
 }

@@ -8,5 +8,5 @@ public class RequestUpdateLoaiNguyenLieu
 
     public string? moTa { get; set; }
 
-    public IdName? danhMucNguyenLieu { get; set; }
+    public string? danhMucNguyenLieu { get; set; }
 }

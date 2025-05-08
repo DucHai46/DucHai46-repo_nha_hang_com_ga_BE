@@ -61,7 +61,7 @@ public class MappingProfile : Profile
 
 
         //Loại nguyên liệu
-        CreateMap(typeof(LoaiNguyenLieu), typeof(LoaiNguyenLieuRespond));
+        // CreateMap(typeof(LoaiNguyenLieu), typeof(LoaiNguyenLieuRespond));
         CreateMap(typeof(RequestAddLoaiNguyenLieu), typeof(LoaiNguyenLieu));
         CreateMap(typeof(RequestUpdateLoaiNguyenLieu), typeof(LoaiNguyenLieu));
 
@@ -71,7 +71,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateDonViTinh), typeof(DonViTinh));
 
         //Nguyên liệu
-        CreateMap(typeof(NguyenLieu), typeof(NguyenLieuRespond));
+        // CreateMap(typeof(NguyenLieu), typeof(NguyenLieuRespond));
         CreateMap(typeof(RequestAddNguyenLieu), typeof(NguyenLieu));
         CreateMap(typeof(RequestUpdateNguyenLieu), typeof(NguyenLieu));
 
@@ -81,12 +81,13 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateDanhMucMonAn), typeof(DanhMucMonAn));
 
         //Loại món ăn
-        CreateMap(typeof(LoaiMonAn), typeof(LoaiMonAnRespond));
+        CreateMap<LoaiMonAn, LoaiMonAnRespond>()
+            .ForMember(dest => dest.danhMucMonAn, opt => opt.Ignore());
         CreateMap(typeof(RequestAddLoaiMonAn), typeof(LoaiMonAn));
         CreateMap(typeof(RequestUpdateLoaiMonAn), typeof(LoaiMonAn));
 
         //Công thức
-        CreateMap(typeof(CongThuc), typeof(CongThucRespond));
+        // CreateMap(typeof(CongThuc), typeof(CongThucRespond));
         CreateMap(typeof(RequestAddCongThuc), typeof(CongThuc));
         CreateMap(typeof(RequestUpdateCongThuc), typeof(CongThuc));
 
@@ -106,17 +107,18 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateLoaiKhuyenMai), typeof(LoaiKhuyenMai));
 
         //Món ăn
-        CreateMap(typeof(MonAn), typeof(MonAnRespond));
+        // CreateMap(typeof(MonAn), typeof(MonAnRespond));
         CreateMap(typeof(RequestAddMonAn), typeof(MonAn));
         CreateMap(typeof(RequestUpdateMonAn), typeof(MonAn));
 
         //Ban
-        CreateMap(typeof(Ban), typeof(BanRespond));
+        CreateMap<Ban, BanRespond>()
+            .ForMember(dest => dest.loaiBan, opt => opt.Ignore());
         CreateMap(typeof(RequestAddBan), typeof(Ban));
         CreateMap(typeof(RequestUpdateBan), typeof(Ban));
 
         //Combo
-        CreateMap(typeof(Combo), typeof(ComboRespond));
+        // CreateMap(typeof(Combo), typeof(ComboRespond));
         CreateMap(typeof(RequestAddCombo), typeof(Combo));
         CreateMap(typeof(RequestUpdateCombo), typeof(Combo));
 

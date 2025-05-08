@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -15,6 +16,7 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class LoaiMonAnRepository : ILoaiMonAnRepository
 {
     private readonly IMongoCollection<LoaiMonAn> _collection;
+    private readonly IMongoCollection<DanhMucMonAn> _collectionDanhMucMonAn;
     private readonly IMapper _mapper;
 
     public LoaiMonAnRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -23,6 +25,7 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<LoaiMonAn>("LoaiMonAn");
+        _collectionDanhMucMonAn = database.GetCollection<DanhMucMonAn>("DanhMucMonAn");
         _mapper = mapper;
     }
 
@@ -37,7 +40,7 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
 
             if (!string.IsNullOrEmpty(request.danhMucMonAnId))
             {
-                filter &= Builders<LoaiMonAn>.Filter.Eq(x => x.danhMucMonAn!.Id, request.danhMucMonAnId);
+                filter &= Builders<LoaiMonAn>.Filter.Eq(x => x.danhMucMonAn, request.danhMucMonAnId);
             }
 
             if (!string.IsNullOrEmpty(request.tenLoai))
@@ -51,7 +54,7 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
                 .Include(x => x.danhMucMonAn)
                 .Include(x => x.moTa);
 
-            var findOptions = new FindOptions<LoaiMonAn, LoaiMonAnRespond>
+            var findOptions = new FindOptions<LoaiMonAn, LoaiMonAn>
             {
                 Projection = projection
             };
@@ -72,11 +75,37 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var loaiMonAns = await cursor.ToListAsync();
 
+                var danhMucMonAnIds = loaiMonAns.Select(x => x.danhMucMonAn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var danhMucMonAnFilter = Builders<DanhMucMonAn>.Filter.In(x => x.Id, danhMucMonAnIds);
+                var danhMucMonAnProjection = Builders<DanhMucMonAn>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDanhMuc);
+                var danhMucMonAns = await _collectionDanhMucMonAn.Find(danhMucMonAnFilter)
+                    .Project<DanhMucMonAn>(danhMucMonAnProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var danhMucMonAnDict = danhMucMonAns.ToDictionary(x => x.Id, x => x.tenDanhMuc);
+
+                // Map dữ liệu
+                var loaiMonAnResponds = loaiMonAns.Select(loaiMonAn => new LoaiMonAnRespond
+                {
+                    id = loaiMonAn.Id,
+                    tenLoai = loaiMonAn.tenLoai,
+                    moTa = loaiMonAn.moTa,
+                    danhMucMonAn = new IdName
+                    {
+                        Id = loaiMonAn.danhMucMonAn,
+                        Name = loaiMonAn.danhMucMonAn != null && danhMucMonAnDict.ContainsKey(loaiMonAn.danhMucMonAn) ? danhMucMonAnDict[loaiMonAn.danhMucMonAn] : null
+                    }
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<LoaiMonAnRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = loaiMonAns
+                    Data = loaiMonAnResponds
                 };
 
                 return new RespondAPIPaging<List<LoaiMonAnRespond>>(
@@ -89,12 +118,36 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var loaiMonAns = await cursor.ToListAsync();
 
+                var danhMucMonAnIds = loaiMonAns.Select(x => x.danhMucMonAn).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var danhMucMonAnFilter = Builders<DanhMucMonAn>.Filter.In(x => x.Id, danhMucMonAnIds);
+                var danhMucMonAnProjection = Builders<DanhMucMonAn>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenDanhMuc);
+                var danhMucMonAns = await _collectionDanhMucMonAn.Find(danhMucMonAnFilter)
+                    .Project<DanhMucMonAn>(danhMucMonAnProjection)
+                    .ToListAsync();
+
+                var danhMucMonAnDict = danhMucMonAns.ToDictionary(x => x.Id, x => x.tenDanhMuc);
+
+                var loaiMonAnResponds = loaiMonAns.Select(loaiMonAn => new LoaiMonAnRespond
+                {
+                    id = loaiMonAn.Id,
+                    tenLoai = loaiMonAn.tenLoai,
+                    moTa = loaiMonAn.moTa,
+                    danhMucMonAn = new IdName
+                    {
+                        Id = loaiMonAn.danhMucMonAn,
+                        Name = loaiMonAn.danhMucMonAn != null && danhMucMonAnDict.ContainsKey(loaiMonAn.danhMucMonAn) ? danhMucMonAnDict[loaiMonAn.danhMucMonAn] : null
+                    }
+                }).ToList();
+
                 return new RespondAPIPaging<List<LoaiMonAnRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<LoaiMonAnRespond>>
                     {
-                        Data = loaiMonAns,
-                        Paging = new PagingDetail(1, loaiMonAns.Count, loaiMonAns.Count)
+                        Data = loaiMonAnResponds,
+                        Paging = new PagingDetail(1, loaiMonAnResponds.Count, loaiMonAnResponds.Count)
                     }
                 );
             }
@@ -114,6 +167,7 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
         {
             var loaiMonAn = await _collection.Find(x => x.Id == id && x.isDelete == false).FirstOrDefaultAsync();
 
+
             if (loaiMonAn == null)
             {
                 return new RespondAPI<LoaiMonAnRespond>(
@@ -123,6 +177,12 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
             }
 
             var loaiMonAnRespond = _mapper.Map<LoaiMonAnRespond>(loaiMonAn);
+            var danhMucMonAn = await _collectionDanhMucMonAn.Find(x => x.Id == loaiMonAn.danhMucMonAn).FirstOrDefaultAsync();
+            loaiMonAnRespond.danhMucMonAn = new IdName
+            {
+                Id = danhMucMonAn.Id,
+                Name = danhMucMonAn.tenDanhMuc
+            };
 
             return new RespondAPI<LoaiMonAnRespond>(
                 ResultRespond.Succeeded,
@@ -155,6 +215,12 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
             await _collection.InsertOneAsync(newLoaiMonAn);
 
             var loaiMonAnRespond = _mapper.Map<LoaiMonAnRespond>(newLoaiMonAn);
+            var danhMucMonAn = await _collectionDanhMucMonAn.Find(x => x.Id == newLoaiMonAn.danhMucMonAn).FirstOrDefaultAsync();
+            loaiMonAnRespond.danhMucMonAn = new IdName
+            {
+                Id = danhMucMonAn.Id,
+                Name = danhMucMonAn.tenDanhMuc
+            };
 
             return new RespondAPI<LoaiMonAnRespond>(
                 ResultRespond.Succeeded,
@@ -205,6 +271,12 @@ public class LoaiMonAnRepository : ILoaiMonAnRepository
             }
 
             var loaiMonAnRespond = _mapper.Map<LoaiMonAnRespond>(loaiMonAn);
+            var danhMucMonAn = await _collectionDanhMucMonAn.Find(x => x.Id == loaiMonAn.danhMucMonAn).FirstOrDefaultAsync();
+            loaiMonAnRespond.danhMucMonAn = new IdName
+            {
+                Id = danhMucMonAn.Id,
+                Name = danhMucMonAn.tenDanhMuc
+            };
 
             return new RespondAPI<LoaiMonAnRespond>(
                 ResultRespond.Succeeded,

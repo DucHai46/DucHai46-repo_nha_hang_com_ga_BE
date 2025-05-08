@@ -3,11 +3,13 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
 using repo_nha_hang_com_ga_BE.Models.MongoDB;
 using repo_nha_hang_com_ga_BE.Models.Requests.CongThuc;
+using repo_nha_hang_com_ga_BE.Models.Responds.Common;
 using repo_nha_hang_com_ga_BE.Models.Responds.CongThuc;
 
 namespace repo_nha_hang_com_ga_BE.Repository.Imp;
@@ -15,6 +17,8 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class CongThucRepository : ICongThucRepository
 {
     private readonly IMongoCollection<CongThuc> _collection;
+    private readonly IMongoCollection<LoaiNguyenLieu> _collectionLoaiNguyenLieu;
+    private readonly IMongoCollection<NguyenLieu> _collectionNguyenLieu;
     private readonly IMapper _mapper;
 
     public CongThucRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -23,6 +27,8 @@ public class CongThucRepository : ICongThucRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<CongThuc>("CongThuc");
+        _collectionLoaiNguyenLieu = database.GetCollection<LoaiNguyenLieu>("LoaiNguyenLieu");
+        _collectionNguyenLieu = database.GetCollection<NguyenLieu>("NguyenLieu");
         _mapper = mapper;
     }
 
@@ -47,7 +53,7 @@ public class CongThucRepository : ICongThucRepository
                 .Include(x => x.moTa)
                 .Include(x => x.hinhAnh);
 
-            var findOptions = new FindOptions<CongThuc, CongThucRespond>
+            var findOptions = new FindOptions<CongThuc, CongThuc>
             {
                 Projection = projection
             };
@@ -68,11 +74,65 @@ public class CongThucRepository : ICongThucRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var congThucs = await cursor.ToListAsync();
 
+                var nguyenLieuDict = new Dictionary<string, string>();
+                var loaiNguyenLieuDict = new Dictionary<string, string>();
+
+                var loaiNguyenLieuIds = congThucs.SelectMany(x => x.loaiNguyenLieus.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+                var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                    .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                    .ToListAsync();
+
+                loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                foreach (var congThuc in congThucs)
+                {
+                    var nguyenLieuIds = congThuc.loaiNguyenLieus.SelectMany(x => x.nguyenLieus.Select(y => y.nguyenLieu)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var nguyenLieuFilter = Builders<NguyenLieu>.Filter.In(x => x.Id, nguyenLieuIds);
+                    var nguyenLieuProjection = Builders<NguyenLieu>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenNguyenLieu);
+                    var nguyenLieus = await _collectionNguyenLieu.Find(nguyenLieuFilter)
+                        .Project<NguyenLieu>(nguyenLieuProjection)
+                        .ToListAsync();
+
+                    nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                }
+
+                var congThucResponds = congThucs.Select(congThuc => new CongThucRespond
+                {
+                    id = congThuc.Id,
+                    tenCongThuc = congThuc.tenCongThuc,
+                    loaiNguyenLieus = congThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
+                    {
+                        Id = x.id,
+                        Name = loaiNguyenLieuDict.ContainsKey(x.id) ? loaiNguyenLieuDict[x.id] : null,
+                        nguyenLieus = x.nguyenLieus.Select(y => new NguyenLieuCongThucRespond
+                        {
+                            nguyenLieu = new IdName
+                            {
+                                Id = y.nguyenLieu,
+                                Name = nguyenLieuDict.ContainsKey(y.nguyenLieu) ? nguyenLieuDict[y.nguyenLieu] : null
+                            },
+                            soLuong = y.soLuong,
+                            ghiChu = y.ghiChu
+                        }).ToList(),
+                        ghiChu = x.ghiChu
+                    }).ToList(),
+                    moTa = congThuc.moTa,
+                    hinhAnh = congThuc.hinhAnh,
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<CongThucRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = congThucs
+                    Data = congThucResponds
                 };
 
                 return new RespondAPIPaging<List<CongThucRespond>>(
@@ -85,12 +145,68 @@ public class CongThucRepository : ICongThucRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var congThucs = await cursor.ToListAsync();
 
+                var nguyenLieuDict = new Dictionary<string, string>();
+                var loaiNguyenLieuDict = new Dictionary<string, string>();
+
+                var loaiNguyenLieuIds = congThucs.SelectMany(x => x.loaiNguyenLieus.Select(y => y.id)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+                var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                    .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                    .ToListAsync();
+
+                loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+                foreach (var congThuc in congThucs)
+                {
+                    var nguyenLieuIds = congThuc.loaiNguyenLieus.SelectMany(x => x.nguyenLieus.Select(y => y.nguyenLieu)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var nguyenLieuFilter = Builders<NguyenLieu>.Filter.In(x => x.Id, nguyenLieuIds);
+                    var nguyenLieuProjection = Builders<NguyenLieu>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenNguyenLieu);
+                    var nguyenLieus = await _collectionNguyenLieu.Find(nguyenLieuFilter)
+                        .Project<NguyenLieu>(nguyenLieuProjection)
+                        .ToListAsync();
+
+                    nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+                }
+
+
+                var congThucResponds = congThucs.Select(congThuc => new CongThucRespond
+                {
+                    id = congThuc.Id,
+                    tenCongThuc = congThuc.tenCongThuc,
+                    loaiNguyenLieus = congThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
+                    {
+                        Id = x.id,
+                        Name = loaiNguyenLieuDict.ContainsKey(x.id) ? loaiNguyenLieuDict[x.id] : null,
+                        nguyenLieus = x.nguyenLieus.Select(y => new NguyenLieuCongThucRespond
+                        {
+                            nguyenLieu = new IdName
+                            {
+                                Id = y.nguyenLieu,
+                                Name = nguyenLieuDict.ContainsKey(y.nguyenLieu) ? nguyenLieuDict[y.nguyenLieu] : null
+                            },
+                            soLuong = y.soLuong,
+                            ghiChu = y.ghiChu
+                        }).ToList(),
+                        ghiChu = x.ghiChu
+                    }).ToList(),
+                    moTa = congThuc.moTa,
+                    hinhAnh = congThuc.hinhAnh
+                }).ToList();
+
+
                 return new RespondAPIPaging<List<CongThucRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<CongThucRespond>>
                     {
-                        Data = congThucs,
-                        Paging = new PagingDetail(1, congThucs.Count, congThucs.Count)
+                        Data = congThucResponds,
+                        Paging = new PagingDetail(1, congThucResponds.Count, congThucResponds.Count)
                     }
                 );
             }
@@ -118,7 +234,59 @@ public class CongThucRepository : ICongThucRepository
                 );
             }
 
-            var congThucRespond = _mapper.Map<CongThucRespond>(congThuc);
+            var loaiNguyenLieuDict = new Dictionary<string, string>();
+            var nguyenLieuDict = new Dictionary<string, string>();
+
+            var loaiNguyenLieuIds = congThuc.loaiNguyenLieus.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+            var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                .ToListAsync();
+
+            loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            foreach (var loaiNguyenLieu in congThuc.loaiNguyenLieus)
+            {
+                var nguyenLieuIds = loaiNguyenLieu.nguyenLieus.Select(x => x.nguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var nguyenLieuFilter = Builders<NguyenLieu>.Filter.In(x => x.Id, nguyenLieuIds);
+                var nguyenLieuProjection = Builders<NguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenNguyenLieu);
+                var nguyenLieus = await _collectionNguyenLieu.Find(nguyenLieuFilter)
+                    .Project<NguyenLieu>(nguyenLieuProjection)
+                    .ToListAsync();
+
+                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+            }
+
+            var congThucRespond = new CongThucRespond();
+            congThucRespond.id = congThuc.Id;
+            congThucRespond.tenCongThuc = congThuc.tenCongThuc;
+            congThucRespond.loaiNguyenLieus = congThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
+            {
+                Id = x.id,
+                Name = loaiNguyenLieuDict.ContainsKey(x.id) ? loaiNguyenLieuDict[x.id] : null,
+                nguyenLieus = x.nguyenLieus.Select(y => new NguyenLieuCongThucRespond
+                {
+                    nguyenLieu = new IdName
+                    {
+                        Id = y.nguyenLieu,
+                        Name = nguyenLieuDict.ContainsKey(y.nguyenLieu) ? nguyenLieuDict[y.nguyenLieu] : null
+                    },
+                    soLuong = y.soLuong,
+                    ghiChu = y.ghiChu
+                }).ToList(),
+                ghiChu = x.ghiChu
+            }).ToList();
+
+            congThucRespond.moTa = congThuc.moTa;
+            congThucRespond.hinhAnh = congThuc.hinhAnh;
+
 
             return new RespondAPI<CongThucRespond>(
                 ResultRespond.Succeeded,
@@ -150,7 +318,59 @@ public class CongThucRepository : ICongThucRepository
 
             await _collection.InsertOneAsync(newCongThuc);
 
-            var congThucRespond = _mapper.Map<CongThucRespond>(newCongThuc);
+            var congThucRespond = new CongThucRespond();
+            congThucRespond.id = newCongThuc.Id;
+            congThucRespond.tenCongThuc = newCongThuc.tenCongThuc;
+
+            var loaiNguyenLieuDict = new Dictionary<string, string>();
+            var nguyenLieuDict = new Dictionary<string, string>();
+
+            var loaiNguyenLieuIds = newCongThuc.loaiNguyenLieus.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+            var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                .ToListAsync();
+
+            loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            foreach (var loaiNguyenLieu in newCongThuc.loaiNguyenLieus)
+            {
+                var nguyenLieuIds = loaiNguyenLieu.nguyenLieus.Select(x => x.nguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var nguyenLieuFilter = Builders<NguyenLieu>.Filter.In(x => x.Id, nguyenLieuIds);
+                var nguyenLieuProjection = Builders<NguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenNguyenLieu);
+                var nguyenLieus = await _collectionNguyenLieu.Find(nguyenLieuFilter)
+                    .Project<NguyenLieu>(nguyenLieuProjection)
+                    .ToListAsync();
+
+                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+            }
+
+            congThucRespond.loaiNguyenLieus = newCongThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
+            {
+                Id = x.id,
+                Name = loaiNguyenLieuDict.ContainsKey(x.id) ? loaiNguyenLieuDict[x.id] : null,
+                nguyenLieus = x.nguyenLieus.Select(y => new NguyenLieuCongThucRespond
+                {
+                    nguyenLieu = new IdName
+                    {
+                        Id = y.nguyenLieu,
+                        Name = nguyenLieuDict.ContainsKey(y.nguyenLieu) ? nguyenLieuDict[y.nguyenLieu] : null
+                    },
+                    soLuong = y.soLuong,
+                    ghiChu = y.ghiChu
+                }).ToList(),
+                ghiChu = x.ghiChu
+            }).ToList();
+
+            congThucRespond.moTa = newCongThuc.moTa;
+            congThucRespond.hinhAnh = newCongThuc.hinhAnh;
 
             return new RespondAPI<CongThucRespond>(
                 ResultRespond.Succeeded,
@@ -200,7 +420,58 @@ public class CongThucRepository : ICongThucRepository
                 );
             }
 
-            var congThucRespond = _mapper.Map<CongThucRespond>(congThuc);
+            var congThucRespond = new CongThucRespond();
+            congThucRespond.id = congThuc.Id;
+            congThucRespond.tenCongThuc = congThuc.tenCongThuc;
+
+            var loaiNguyenLieuDict = new Dictionary<string, string>();
+            var nguyenLieuDict = new Dictionary<string, string>();
+
+            var loaiNguyenLieuIds = congThuc.loaiNguyenLieus.Select(x => x.id).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var loaiNguyenLieuFilter = Builders<LoaiNguyenLieu>.Filter.In(x => x.Id, loaiNguyenLieuIds);
+            var loaiNguyenLieuProjection = Builders<LoaiNguyenLieu>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiNguyenLieus = await _collectionLoaiNguyenLieu.Find(loaiNguyenLieuFilter)
+                .Project<LoaiNguyenLieu>(loaiNguyenLieuProjection)
+                .ToListAsync();
+
+            loaiNguyenLieuDict = loaiNguyenLieus.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            foreach (var loaiNguyenLieu in congThuc.loaiNguyenLieus)
+            {
+                var nguyenLieuIds = loaiNguyenLieu.nguyenLieus.Select(x => x.nguyenLieu).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var nguyenLieuFilter = Builders<NguyenLieu>.Filter.In(x => x.Id, nguyenLieuIds);
+                var nguyenLieuProjection = Builders<NguyenLieu>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenNguyenLieu);
+                var nguyenLieus = await _collectionNguyenLieu.Find(nguyenLieuFilter)
+                    .Project<NguyenLieu>(nguyenLieuProjection)
+                    .ToListAsync();
+
+                nguyenLieuDict = nguyenLieus.ToDictionary(x => x.Id, x => x.tenNguyenLieu);
+            }
+
+            congThucRespond.loaiNguyenLieus = congThuc.loaiNguyenLieus.Select(x => new LoaiNguyenLieuCongThucRespond
+            {
+                Id = x.id,
+                Name = loaiNguyenLieuDict.ContainsKey(x.id) ? loaiNguyenLieuDict[x.id] : null,
+                nguyenLieus = x.nguyenLieus.Select(y => new NguyenLieuCongThucRespond
+                {
+                    nguyenLieu = new IdName
+                    {
+                        Id = y.nguyenLieu,
+                        Name = nguyenLieuDict.ContainsKey(y.nguyenLieu) ? nguyenLieuDict[y.nguyenLieu] : null
+                    },
+                    soLuong = y.soLuong,
+                    ghiChu = y.ghiChu
+                }).ToList(),
+                ghiChu = x.ghiChu
+            }).ToList();
+
+            congThucRespond.moTa = congThuc.moTa;
+            congThucRespond.hinhAnh = congThuc.hinhAnh;
 
             return new RespondAPI<CongThucRespond>(
                 ResultRespond.Succeeded,

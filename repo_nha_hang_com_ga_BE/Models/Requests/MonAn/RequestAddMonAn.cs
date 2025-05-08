@@ -6,11 +6,11 @@ public class RequestAddMonAn
 {
     public string? tenMonAn { get; set; }
 
-    public IdName? loaiMonAn { get; set; }
+    public string? loaiMonAn { get; set; }
 
-    public IdName? congThuc { get; set; }
+    public string? congThuc { get; set; }
 
-    public GiamGiaMonAn? giamGia { get; set; }
+    public string? giamGia { get; set; }
 
     public string? moTa { get; set; }
 
