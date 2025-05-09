@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -30,6 +31,20 @@ var mongoDbConfig = new MongoDbIdentityConfiguration
         options.Password.RequireDigit = false;
         options.Password.RequiredLength = 8;
         options.Password.RequireNonAlphanumeric = false;
+        
+        // Cấu hình để xử lý vấn đề concurrency
+        options.Stores.MaxLengthForKeys = 128;
+        options.Stores.ProtectPersonalData = false;
+        options.Lockout.AllowedForNewUsers = false;
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+        
+        // Cấu hình Claims
+        options.ClaimsIdentity.UserIdClaimType = ClaimTypes.NameIdentifier;
+        options.ClaimsIdentity.UserNameClaimType = ClaimTypes.Name;
+        options.ClaimsIdentity.RoleClaimType = ClaimTypes.Role;
     }
 };
 
@@ -39,11 +54,20 @@ var mongoDbContext = new CustomMongoDbContext(
     mongoDbConfig.MongoDbSettings.DatabaseName
 );
 
+// Cấu hình MongoDB Identity
 builder.Services.ConfigureMongoDbIdentity<MongoUser, MongoIdentityRole<Guid>, Guid>(
     mongoDbConfig,
     mongoDbContext
-).AddRoles<MongoIdentityRole<Guid>>() // Thêm dòng này
-  .AddRoleManager<RoleManager<MongoIdentityRole<Guid>>>(); // Và dòng này
+).AddRoles<MongoIdentityRole<Guid>>()
+  .AddRoleManager<RoleManager<MongoIdentityRole<Guid>>>()
+  .AddDefaultTokenProviders();
+
+// Thêm cấu hình MongoDB
+builder.Services.Configure<MongoDbSettings>(options =>
+{
+    options.ConnectionString = mongoDbConfig.MongoDbSettings.ConnectionString;
+    options.DatabaseName = mongoDbConfig.MongoDbSettings.DatabaseName;
+});
 
 // Add this authentication configuration
 builder.Services.AddAuthentication(options =>
@@ -119,41 +143,90 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<MongoIdentityRole<Guid>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<MongoUser>>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
-    // Tạo vai trò Admin nếu chưa tồn tại
-    if (!await roleManager.RoleExistsAsync("Admin"))
+    try
     {
-        await roleManager.CreateAsync(new MongoIdentityRole<Guid>("Admin"));
-    }
-    
-    // Tạo vai trò User nếu chưa tồn tại
-    if (!await roleManager.RoleExistsAsync("User"))
-    {
-        await roleManager.CreateAsync(new MongoIdentityRole<Guid>("User"));
-    }
-    
-    // Tạo vai trò Manager nếu chưa tồn tại
-    if (!await roleManager.RoleExistsAsync("Manager"))
-    {
-        await roleManager.CreateAsync(new MongoIdentityRole<Guid>("Manager"));
-    }
-    
-    // Tạo tài khoản Admin mặc định nếu chưa có
-    var adminUser = await userManager.FindByNameAsync("admin");
-    if (adminUser == null)
-    {
-        adminUser = new MongoUser
+        // Tạo vai trò Admin nếu chưa tồn tại
+        if (!await roleManager.RoleExistsAsync("Admin"))
         {
-            UserName = "admin",
-            Email = "admin@example.com",
-            FullName = "Administrator"
-        };
-        
-        var result = await userManager.CreateAsync(adminUser, "Admin@123");
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            var adminRole = new MongoIdentityRole<Guid>("Admin");
+            var result = await roleManager.CreateAsync(adminRole);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("Đã tạo vai trò Admin thành công");
+            }
+            else
+            {
+                logger.LogError("Lỗi khi tạo vai trò Admin: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
         }
+        
+        // Tạo vai trò User nếu chưa tồn tại
+        if (!await roleManager.RoleExistsAsync("User"))
+        {
+            var userRole = new MongoIdentityRole<Guid>("User");
+            var result = await roleManager.CreateAsync(userRole);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("Đã tạo vai trò User thành công");
+            }
+            else
+            {
+                logger.LogError("Lỗi khi tạo vai trò User: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+        
+        // Tạo vai trò Manager nếu chưa tồn tại
+        if (!await roleManager.RoleExistsAsync("Manager"))
+        {
+            var managerRole = new MongoIdentityRole<Guid>("Manager");
+            var result = await roleManager.CreateAsync(managerRole);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("Đã tạo vai trò Manager thành công");
+            }
+            else
+            {
+                logger.LogError("Lỗi khi tạo vai trò Manager: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+        
+        // Tạo tài khoản Admin mặc định nếu chưa có
+        var adminUser = await userManager.FindByNameAsync("admin");
+        if (adminUser == null)
+        {
+            adminUser = new MongoUser
+            {
+                UserName = "admin",
+                Email = "admin@example.com",
+                FullName = "Administrator"
+            };
+            
+            var result = await userManager.CreateAsync(adminUser, "Admin@123");
+            if (result.Succeeded)
+            {
+                var roleResult = await userManager.AddToRoleAsync(adminUser, "Admin");
+                if (roleResult.Succeeded)
+                {
+                    logger.LogInformation("Đã tạo tài khoản Admin mặc định thành công");
+                }
+                else
+                {
+                    logger.LogError("Lỗi khi gán vai trò Admin cho tài khoản admin: {Errors}", 
+                        string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                }
+            }
+            else
+            {
+                logger.LogError("Lỗi khi tạo tài khoản Admin mặc định: {Errors}", 
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Lỗi khi khởi tạo vai trò và tài khoản mặc định");
     }
 }
 
@@ -161,7 +234,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment() || true)
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/auth/swagger/v1/swagger.json", "AuthService v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AuthService v1"));
 }
 
 app.UseCors(myAllowSpecificOrigins);
@@ -180,6 +253,6 @@ app.Run();
 [CollectionName("Users")]
 public class MongoUser : MongoIdentityUser<Guid>
 {
-    public string FullName { get; set; } // Add custom fields as needed
+    public string? FullName { get; set; } // Make FullName nullable
 }
 

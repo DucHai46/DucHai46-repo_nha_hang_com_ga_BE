@@ -30,29 +30,63 @@ public class AuthController : Controller
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel model)
     {
-        var user = new MongoUser
+        try
         {
-            UserName = model.Username,
-            Email = model.Email,
-            FullName = model.Username // hoặc nhận từ client nếu cần
-        };
-        var result = await _userManager.CreateAsync(user, model.Password);
+            // Kiểm tra tồn tại
+            if (await _userManager.FindByNameAsync(model.Username) != null)
+                return BadRequest("Username đã tồn tại");
 
-        if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            if (await _userManager.FindByEmailAsync(model.Email) != null)
+                return BadRequest("Email đã tồn tại");
 
-        // Gán vai trò mặc định cho người dùng mới (nếu có)
-        if (!string.IsNullOrEmpty(model.Role))
-        {
-            await _userManager.AddToRoleAsync(user, model.Role);
+            // Role mặc định
+            string roleToAssign = "User";
+            if (!string.IsNullOrEmpty(model.Role))
+            {
+                if (!await _roleManager.RoleExistsAsync(model.Role))
+                    return BadRequest($"Vai trò '{model.Role}' không tồn tại");
+                roleToAssign = model.Role;
+            }
+
+            // Tạo user
+            var user = new MongoUser
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                FullName = model.FullName ?? model.Username
+            };
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            // ❗ Wait until MongoDB writes are complete (retry loop)
+            MongoUser? createdUser = null;
+            for (int i = 0; i < 5; i++)
+            {
+                createdUser = await _userManager.FindByNameAsync(user.UserName);
+                if (createdUser != null)
+                    break;
+                await Task.Delay(100); // wait 100ms between retries
+            }
+
+            if (createdUser == null)
+                return StatusCode(500, "Không thể lấy user sau khi tạo");
+
+            // ❗ Gán role với bản user mới từ DB
+            var roleResult = await _userManager.AddToRoleAsync(createdUser, roleToAssign);
+            if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(createdUser);
+                return BadRequest(roleResult.Errors);
+            }
+
+            return Ok(new { UserId = createdUser.Id });
         }
-        else
+        catch (Exception ex)
         {
-            // Gán vai trò "User" mặc định nếu không có vai trò được chỉ định
-            await _userManager.AddToRoleAsync(user, "User");
+            return StatusCode(500, $"Lỗi server: {ex.Message}");
         }
-
-        return Ok(new { UserId = user.Id });
     }
 
     [HttpPost("token")]
@@ -159,19 +193,20 @@ public class AuthController : Controller
 
 public class RegisterModel
 {
-    public string Username { get; set; }
-    public string Email { get; set; }
-    public string Password { get; set; }
-    public string? Role { get; set; } // Thêm trường Role (tùy chọn)
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? Role { get; set; }
+    public string? FullName { get; set; }
 }
 
 public class LoginModel
 {
-    public string Username { get; set; }
-    public string Password { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
 
 public class RoleModel
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
