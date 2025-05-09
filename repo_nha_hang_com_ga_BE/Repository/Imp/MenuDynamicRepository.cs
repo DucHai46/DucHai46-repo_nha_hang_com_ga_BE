@@ -46,6 +46,11 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 filter &= Builders<MenuDynamic>.Filter.Eq(x => x.parent, request.parentId);
             }
 
+            if (request.isActive != null)
+            {
+                filter &= Builders<MenuDynamic>.Filter.Eq(x => x.isActive, request.isActive);
+            }
+
 
             var projection = Builders<MenuDynamic>.Projection
                 .Include(x => x.Id)
@@ -54,7 +59,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 .Include(x => x.label)
                 .Include(x => x.isOpen)
                 .Include(x => x.parent)
-                .Include(x => x.position);
+                .Include(x => x.position)
+                .Include(x => x.isActive);
             // .Include(x => x.Children);
 
 
@@ -106,7 +112,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                         Id = menuDynamic.parent,
                         Name = menuDynamic.parent != null && parentDict.ContainsKey(menuDynamic.parent) ? parentDict[menuDynamic.parent] : null
                     },
-                    position = menuDynamic.position
+                    position = menuDynamic.position,
+                    isActive = menuDynamic.isActive
                 }).ToList();
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
@@ -153,7 +160,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                         Id = menuDynamic.parent,
                         Name = menuDynamic.parent != null && parentDict.ContainsKey(menuDynamic.parent) ? parentDict[menuDynamic.parent] : null
                     },
-                    position = menuDynamic.position
+                    position = menuDynamic.position,
+                    isActive = menuDynamic.isActive
                 }).ToList();
 
                 return new RespondAPIPaging<List<MenuDynamicRespond>>(
@@ -201,7 +209,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                     Id = menuDynamic.parent,
                     Name = parent != null ? parent.label : null
                 },
-                position = menuDynamic.position
+                position = menuDynamic.position,
+                isActive = menuDynamic.isActive
             };
 
             return new RespondAPI<MenuDynamicRespond>(
@@ -246,7 +255,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                     Id = newMenuDynamic.parent,
                     Name = parent != null ? parent.label : null
                 },
-                position = newMenuDynamic.position
+                position = newMenuDynamic.position,
+                isActive = newMenuDynamic.isActive
             };
             return new RespondAPI<MenuDynamicRespond>(
                 ResultRespond.Succeeded,
@@ -308,7 +318,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                     Id = menuDynamic.parent,
                     Name = parent != null ? parent.label : null
                 },
-                position = menuDynamic.position
+                position = menuDynamic.position,
+                isActive = menuDynamic.isActive
             };
 
             return new RespondAPI<MenuDynamicRespond>(

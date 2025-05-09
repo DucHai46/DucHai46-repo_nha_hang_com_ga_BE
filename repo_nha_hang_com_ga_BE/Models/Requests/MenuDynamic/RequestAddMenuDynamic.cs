@@ -10,4 +10,6 @@ public class RequestAddMenuDynamic
     public bool? isOpen { get; set; } = false;
     public string? parent { get; set; }
     public string? position { get; set; }
+    public bool? isActive { get; set; } = true;
 }
+

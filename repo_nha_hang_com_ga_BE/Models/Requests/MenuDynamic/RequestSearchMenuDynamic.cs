@@ -5,4 +5,5 @@ public class RequestSearchMenuDynamic : PagingParameterModel
 {
     public string? label { get; set; }
     public string? parentId { get; set; }
+    public bool? isActive { get; set; }
 }

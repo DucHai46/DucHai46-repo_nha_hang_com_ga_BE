@@ -17,5 +17,6 @@ public class MenuDynamicRespond
         public bool? isOpen { get; set; } = false;
         public IdName? parent { get; set; }
         public string? position { get; set; }
+        public bool? isActive { get; set; }
 }
 
