@@ -9,6 +9,7 @@ public class RequestUpdateMenuDynamic
     public string? icon { get; set; }
     public string? label { get; set; }
     public bool? isOpen { get; set; } = false;
-    public List<MenuDynamicChild>? children { get; set; }
+    public string? parent { get; set; }
+    public string? position { get; set; }
 
 }

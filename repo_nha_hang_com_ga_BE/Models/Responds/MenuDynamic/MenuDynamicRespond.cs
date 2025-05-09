@@ -15,6 +15,7 @@ public class MenuDynamicRespond
         public string? icon { get; set; }
         public string? label { get; set; }
         public bool? isOpen { get; set; } = false;
-        public List<MenuDynamicChild>? children { get; set; }
+        public IdName? parent { get; set; }
+        public string? position { get; set; }
 }
 

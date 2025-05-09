@@ -149,7 +149,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateKhachHang), typeof(KhachHang));
 
         //Menu Dynamic
-        CreateMap(typeof(MenuDynamic), typeof(MenuDynamicRespond));
+        // CreateMap(typeof(MenuDynamic), typeof(MenuDynamicRespond));
         CreateMap(typeof(RequestAddMenuDynamic), typeof(MenuDynamic));
         CreateMap(typeof(RequestUpdateMenuDynamic), typeof(MenuDynamic));
         // CreateMap(typeof(List<MenuDynamic>), typeof(List<MenuDynamicRespond>));
