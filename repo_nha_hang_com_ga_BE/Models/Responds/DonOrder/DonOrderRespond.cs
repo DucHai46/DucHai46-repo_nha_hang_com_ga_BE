@@ -13,8 +13,33 @@ public class DonOrderRespond
     public string? tenDon { get; set; }
     public IdName? loaiDon { get; set; }
     public IdName? ban { get; set; }
+    public IdName? khachHang { get; set; }
     public TrangThaiDonOrder? trangThai { get; set; }
-    public List<ChiTietDonOrder>? chiTietDonOrder { get; set; }
+    public List<ChiTietDonOrderRespond>? chiTietDonOrder { get; set; }
     public int? tongTien { get; set; }
+
+}
+
+public class ChiTietDonOrderRespond
+{
+
+    public List<DonMonAnRespond>? monAns { get; set; }
+
+    public int? trangThai { get; set; }
+
+}
+
+public class DonMonAnRespond
+{
+
+    public IdName? monAn { get; set; }
+
+    public TrangThaiDonMonAn? monAn_trangThai { get; set; }
+
+    public int? soLuong { get; set; }
+
+    public int? giaTien { get; set; }
+
+    public string? moTa { get; set; }
 
 }

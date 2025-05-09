@@ -46,6 +46,8 @@ using repo_nha_hang_com_ga_BE.Models.Requests.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Responds.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Requests.LoaiDon;
 using repo_nha_hang_com_ga_BE.Models.Responds.LoaiDon;
+using repo_nha_hang_com_ga_BE.Models.Requests;
+using repo_nha_hang_com_ga_BE.Models.Responds.PhuongThucThanhToan;
 
 
 namespace repo_nha_hang_com_ga_BE.Models.Common.Services;
@@ -176,5 +178,10 @@ public class MappingProfile : Profile
         CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
         CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
         CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
+
+        //Phương thức thanh toán
+        CreateMap(typeof(PhuongThucThanhToan), typeof(PhuongThucThanhToanRespond));
+        CreateMap(typeof(RequestAddPhuongThucThanhToan), typeof(PhuongThucThanhToan));
+        CreateMap(typeof(RequestUpdatePhuongThucThanhToan), typeof(PhuongThucThanhToan));
     }
 }

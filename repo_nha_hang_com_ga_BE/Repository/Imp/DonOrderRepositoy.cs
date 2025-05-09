@@ -1,6 +1,7 @@
 
 using AutoMapper;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
@@ -20,6 +21,8 @@ public class DonOrderRepository : IDonOrderRepository
     private readonly IMongoCollection<DonOrder> _collection;
     private readonly IMongoCollection<LoaiBan> _collectionLoaiBan;
     private readonly IMongoCollection<LoaiDon> _collectionLoaiDon;
+    private readonly IMongoCollection<MonAn> _collectionMonAn;
+    private readonly IMongoCollection<KhachHang> _collectionkhachHang;
 
     private readonly IMapper _mapper;
 
@@ -31,6 +34,8 @@ public class DonOrderRepository : IDonOrderRepository
         _collection = database.GetCollection<DonOrder>("DonOrder");
         _collectionLoaiBan = database.GetCollection<LoaiBan>("LoaiBan");
         _collectionLoaiDon = database.GetCollection<LoaiDon>("LoaiDon");
+        _collectionMonAn = database.GetCollection<MonAn>("MonAn");
+        _collectionkhachHang = database.GetCollection<KhachHang>("KhachHang");
         _mapper = mapper;
     }
 
@@ -58,6 +63,10 @@ public class DonOrderRepository : IDonOrderRepository
             {
                 filter &= Builders<DonOrder>.Filter.Eq(x => x.ban, request.ban);
             }
+            if (!string.IsNullOrEmpty(request.khachHang))
+            {
+                filter &= Builders<DonOrder>.Filter.Eq(x => x.khachHang, request.khachHang);
+            }
 
             if (request.trangThai.HasValue) // Kiểm tra nếu trangThai có giá trị: True hoặc False
             {
@@ -69,6 +78,7 @@ public class DonOrderRepository : IDonOrderRepository
                 .Include(x => x.tenDon)
                 .Include(x => x.loaiDon)
                 .Include(x => x.ban)
+                .Include(x => x.khachHang)
                 .Include(x => x.trangThai)
                 .Include(x => x.chiTietDonOrder)
                 .Include(x => x.tongTien);
@@ -91,7 +101,6 @@ public class DonOrderRepository : IDonOrderRepository
                 findOptions.Limit = request.PageSize;
 
                 var cursor = await collection.FindAsync(filter, findOptions);
-                // var bans = await cursor.ToListAsync();
                 var dons = await cursor.ToListAsync();
 
                 // Lấy danh sách ID loại bàn
@@ -99,6 +108,10 @@ public class DonOrderRepository : IDonOrderRepository
 
                 // Lấy danh sách ID loại đơn order 
                 var loaiDonIds = dons.Select(x => x.loaiDon).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Lấy danh sách ID khách hàng
+                var khachHangIds = dons.Select(x => x.khachHang).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
 
                 // Query bảng loại bàn
                 var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
@@ -118,9 +131,53 @@ public class DonOrderRepository : IDonOrderRepository
                     .Project<LoaiDon>(loaiDonProjection)
                     .ToListAsync();
 
+                // Query bảng khách hàng
+                var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+                var khachHangProjection = Builders<KhachHang>.Projection
+                   .Include(x => x.Id)
+                   .Include(x => x.tenKhachHang);
+                var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+                  .Project<KhachHang>(khachHangProjection)
+                  .ToListAsync();
+
+
                 // Tạo dictionary để map nhanh
                 var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
                 var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+                var monAnDict = new Dictionary<string, string>();
+                var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+                List<MonAn> monAns = new List<MonAn>();
+                foreach (var don in dons)
+                {
+                    var monAnIds = dons.SelectMany(x => x.chiTietDonOrder)
+                        .SelectMany(ct => ct.monAns)
+                        .Select(ma => ma.monAn)
+                        .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+
+                    var monAnProjection = Builders<MonAn>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenMonAn)
+                        .Include(x => x.giaTien);
+
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
+                        .Project<MonAn>(monAnProjection)
+                        .ToListAsync();
+
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
+
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
+                }
 
                 // Map dữ liệu
                 var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
@@ -137,7 +194,30 @@ public class DonOrderRepository : IDonOrderRepository
                         Id = donOrder.ban,
                         Name = donOrder.ban != null && loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
                     },
+                    khachHang = new IdName
+                    {
+                        Id = donOrder.khachHang,
+                        Name = donOrder.khachHang != null && khachHangDict.ContainsKey(donOrder.khachHang) ? khachHangDict[donOrder.khachHang] : null
+                    },
+                    chiTietDonOrder = donOrder.chiTietDonOrder.Select(ct => new ChiTietDonOrderRespond
+                    {
+                        monAns = ct.monAns.Select(ma => new DonMonAnRespond
+                        {
+                            monAn = new IdName
+                            {
+                                Id = ma.monAn,
+                                Name = ma.monAn != null && monAnDict.ContainsKey(ma.monAn) ? monAnDict[ma.monAn] : null
+                            },
+
+                            monAn_trangThai = ma.monAn_trangThai,
+                            soLuong = ma.soLuong,
+                            giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
+                            moTa = ma.moTa,
+                        }).ToList(),
+                        trangThai = ct.trangThai,
+                    }).ToList(),
                     trangThai = donOrder.trangThai,
+                    tongTien = donOrder.tongTien,
                 }).ToList();
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
@@ -155,7 +235,6 @@ public class DonOrderRepository : IDonOrderRepository
             else
             {
                 var cursor = await collection.FindAsync(filter, findOptions);
-                // var bans = await cursor.ToListAsync();
                 var dons = await cursor.ToListAsync();
 
                 // Lấy danh sách ID loại bàn
@@ -163,6 +242,10 @@ public class DonOrderRepository : IDonOrderRepository
 
                 // Lấy danh sách ID loại đơn order 
                 var loaiDonIds = dons.Select(x => x.loaiDon).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Lấy danh sách ID khách hàng
+                var khachHangIds = dons.Select(x => x.khachHang).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
 
                 // Query bảng loại bàn
                 var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
@@ -182,9 +265,53 @@ public class DonOrderRepository : IDonOrderRepository
                     .Project<LoaiDon>(loaiDonProjection)
                     .ToListAsync();
 
+                // Query bảng khách hàng
+                var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+                var khachHangProjection = Builders<KhachHang>.Projection
+                   .Include(x => x.Id)
+                   .Include(x => x.tenKhachHang);
+                var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+                  .Project<KhachHang>(khachHangProjection)
+                  .ToListAsync();
+
+
                 // Tạo dictionary để map nhanh
                 var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
                 var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+                var monAnDict = new Dictionary<string, string>();
+                var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+                List<MonAn> monAns = new List<MonAn>();
+                foreach (var don in dons)
+                {
+                    var monAnIds = dons.SelectMany(x => x.chiTietDonOrder)
+                        .SelectMany(ct => ct.monAns)
+                        .Select(ma => ma.monAn)
+                        .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+
+                    var monAnProjection = Builders<MonAn>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenMonAn)
+                        .Include(x => x.giaTien);
+
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
+                        .Project<MonAn>(monAnProjection)
+                        .ToListAsync();
+
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
+
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
+                }
 
                 // Map dữ liệu
                 var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
@@ -201,7 +328,30 @@ public class DonOrderRepository : IDonOrderRepository
                         Id = donOrder.ban,
                         Name = donOrder.ban != null && loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
                     },
+                    khachHang = new IdName
+                    {
+                        Id = donOrder.khachHang,
+                        Name = donOrder.khachHang != null && khachHangDict.ContainsKey(donOrder.khachHang) ? khachHangDict[donOrder.khachHang] : null
+                    },
+                    chiTietDonOrder = donOrder.chiTietDonOrder.Select(ct => new ChiTietDonOrderRespond
+                    {
+                        monAns = ct.monAns.Select(ma => new DonMonAnRespond
+                        {
+                            monAn = new IdName
+                            {
+                                Id = ma.monAn,
+                                Name = ma.monAn != null && monAnDict.ContainsKey(ma.monAn) ? monAnDict[ma.monAn] : null
+                            },
+
+                            monAn_trangThai = ma.monAn_trangThai,
+                            soLuong = ma.soLuong,
+                            giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
+                            moTa = ma.moTa,
+                        }).ToList(),
+                        trangThai = ct.trangThai,
+                    }).ToList(),
                     trangThai = donOrder.trangThai,
+                    tongTien = donOrder.tongTien,
                 }).ToList();
 
                 return new RespondAPIPaging<List<DonOrderRespond>>(
@@ -237,13 +387,120 @@ public class DonOrderRepository : IDonOrderRepository
                 );
             }
 
-            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == donOrder.loaiDon).FirstOrDefaultAsync();
-            var donOrderRespond = _mapper.Map<DonOrderRespond>(donOrder);
+            // Lấy danh sách ID loại bàn
+            var loaiBanIds = new List<string> { donOrder.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
-            donOrderRespond.loaiDon = new IdName
+            // Lấy danh sách ID loại đơn order 
+            var loaiDonIds = new List<string> { donOrder.loaiDon }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            // Lấy danh sách ID khách hàng
+            var khachHangIds = new List<string> { donOrder.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+
+            // Query bảng loại bàn
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                .Project<LoaiBan>(loaiBanProjection)
+                .ToListAsync();
+
+            // Query bảng loại đơn
+            var loaiDonFilter = Builders<LoaiDon>.Filter.In(x => x.Id, loaiDonIds);
+            var loaiDonProjection = Builders<LoaiDon>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoaiDon);
+            var loaiDons = await _collectionLoaiDon.Find(loaiDonFilter)
+                .Project<LoaiDon>(loaiDonProjection)
+                .ToListAsync();
+
+            // Query bảng khách hàng
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+              .Include(x => x.Id)
+              .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+             .Project<KhachHang>(khachHangProjection)
+             .ToListAsync();
+
+
+            // Tạo dictionary để map nhanh
+            var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+            var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+            var monAnDict = new Dictionary<string, string>();
+            var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            List<MonAn> monAns = new List<MonAn>();
+            foreach (var don in donOrder.chiTietDonOrder)
             {
-                Id = loaiDon.Id,
-                Name = loaiDon.tenLoaiDon
+                var monAnIds = donOrder.chiTietDonOrder.SelectMany(x => x.monAns)
+                    .Select(ma => ma.monAn)
+                    .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+
+                var monAnProjection = Builders<MonAn>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenMonAn)
+                    .Include(x => x.giaTien);
+
+                var newMonAns = await _collectionMonAn.Find(monAnFilter)
+                    .Project<MonAn>(monAnProjection)
+                    .ToListAsync();
+
+                var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                monAns.AddRange(uniqueMonAns);
+
+                var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                foreach (var item in newDict)
+                {
+                    if (!monAnDict.ContainsKey(item.Key))
+                    {
+                        monAnDict.Add(item.Key, item.Value);
+                    }
+                }
+            }
+
+            // Map dữ liệu
+            var donOrderRespond = new DonOrderRespond
+            {
+                id = donOrder.Id,
+                tenDon = donOrder.tenDon,
+                loaiDon = new IdName
+                {
+                    Id = donOrder.loaiDon,
+                    Name = donOrder.loaiDon != null && loaiDonDict.ContainsKey(donOrder.loaiDon) ? loaiDonDict[donOrder.loaiDon] : null
+                },
+                ban = new IdName
+                {
+                    Id = donOrder.ban,
+                    Name = donOrder.ban != null && loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = donOrder.khachHang,
+                    Name = donOrder.khachHang != null && khachHangDict.ContainsKey(donOrder.khachHang) ? khachHangDict[donOrder.khachHang] : null
+                },
+                chiTietDonOrder = donOrder.chiTietDonOrder.Select(ct => new ChiTietDonOrderRespond
+                {
+                    monAns = ct.monAns.Select(ma => new DonMonAnRespond
+                    {
+                        monAn = new IdName
+                        {
+                            Id = ma.monAn,
+                            Name = ma.monAn != null && monAnDict.ContainsKey(ma.monAn) ? monAnDict[ma.monAn] : null
+                        },
+
+                        monAn_trangThai = ma.monAn_trangThai,
+                        soLuong = ma.soLuong,
+                        giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
+                        moTa = ma.moTa,
+                    }).ToList(),
+                    trangThai = ct.trangThai,
+                }).ToList(),
+                trangThai = donOrder.trangThai,
+                tongTien = donOrder.tongTien,
             };
 
             return new RespondAPI<DonOrderRespond>(
@@ -275,13 +532,111 @@ public class DonOrderRepository : IDonOrderRepository
             // newDanhMucNguyenLieu.updatedUser = currentUser.Id;
 
             await _collection.InsertOneAsync(newDonOrder);
-            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == newDonOrder.loaiDon).FirstOrDefaultAsync();
-            var donOrderRespond = _mapper.Map<DonOrderRespond>(newDonOrder);
-            donOrderRespond.loaiDon = new IdName
+
+
+
+            var monAnDict = new Dictionary<string, string>();
+            var loaiDonDict = new Dictionary<string, string>();
+            var loaiBanDict = new Dictionary<string, string>();
+            var khachHangDict = new Dictionary<string, string>();
+
+            // List<MonAn> monAns = new List<MonAn>();
+
+            var loaiDonIds = new List<string> { newDonOrder.loaiDon }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var loaiBanIds = new List<string> { newDonOrder.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var khachHangIds = new List<string> { newDonOrder.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+            .Include(x => x.Id)
+            .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+                .Project<KhachHang>(khachHangProjection)
+               .ToListAsync();
+            khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            var loaiDonFilter = Builders<LoaiDon>.Filter.In(x => x.Id, loaiDonIds);
+            var loaiDonProjection = Builders<LoaiDon>.Projection
+              .Include(x => x.Id)
+             .Include(x => x.tenLoaiDon);
+            var loaiDons = await _collectionLoaiDon.Find(loaiDonFilter)
+             .Project<LoaiDon>(loaiDonProjection)
+             .ToListAsync();
+            loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+             .Include(x => x.Id)
+            .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+            .Project<LoaiBan>(loaiBanProjection)
+            .ToListAsync();
+            loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            List<MonAn> monAns = new List<MonAn>();
+
+            var monAnIds = newDonOrder.chiTietDonOrder.SelectMany(x => x.monAns.Select(y => y.monAn)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+            var monAnProjection = Builders<MonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenMonAn)
+                .Include(x => x.giaTien)
+                .Include(x => x.moTa);
+            monAns = await _collectionMonAn.Find(monAnFilter)
+                .Project<MonAn>(monAnProjection)
+                .ToListAsync();
+
+            monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+
+            var donOrderRespond = new DonOrderRespond
             {
-                Id = loaiDon.Id,
-                Name = loaiDon.tenLoaiDon
+                id = newDonOrder.Id,
+                tenDon = newDonOrder.tenDon,
+                loaiDon = new IdName
+                {
+                    Id = newDonOrder.loaiDon,
+                    Name = loaiDonDict.ContainsKey(newDonOrder.loaiDon) ? loaiDonDict[newDonOrder.loaiDon] : null
+                },
+                ban = new IdName
+                {
+                    Id = newDonOrder.ban,
+                    Name = loaiBanDict.ContainsKey(newDonOrder.ban) ? loaiBanDict[newDonOrder.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = newDonOrder.khachHang,
+                    Name = khachHangDict.ContainsKey(newDonOrder.khachHang) ? khachHangDict[newDonOrder.khachHang] : null
+                },
+                chiTietDonOrder = newDonOrder.chiTietDonOrder.Select(x => new ChiTietDonOrderRespond
+                {
+                    monAns = x.monAns.Select(y => new DonMonAnRespond
+                    {
+                        monAn = new IdName
+                        {
+                            Id = y.monAn,
+                            Name = monAnDict.ContainsKey(y.monAn) ? monAnDict[y.monAn] : null,
+                        },
+                        monAn_trangThai = y.monAn_trangThai,
+                        soLuong = y.soLuong,
+                        giaTien = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.giaTien : null,
+                        moTa = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.moTa : null
+                    }).ToList(),
+                    trangThai = x.trangThai
+                }).ToList(),
+                trangThai = newDonOrder.trangThai,
+                tongTien = newDonOrder.tongTien
             };
+
+
+
+            // var loaiDon = await _collectionLoaiDon.Find(x => x.Id == newDonOrder.loaiDon).FirstOrDefaultAsync();
+            // var donOrderRespond = _mapper.Map<DonOrderRespond>(newDonOrder);
+            // donOrderRespond.loaiDon = new IdName
+            // {
+            //     Id = loaiDon.Id,
+            //     Name = loaiDon.tenLoaiDon
+            // };
             return new RespondAPI<DonOrderRespond>(
                 ResultRespond.Succeeded,
                 "Tạo đơn order thành công.",
@@ -330,12 +685,96 @@ public class DonOrderRepository : IDonOrderRepository
                 );
             }
 
-            var donOrderRespond = _mapper.Map<DonOrderRespond>(donOrder);
-            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == donOrder.loaiDon).FirstOrDefaultAsync();
-            donOrderRespond.loaiDon = new IdName
+            // var donOrderRespond = _mapper.Map<DonOrderRespond>(donOrder);
+            var monAnDict = new Dictionary<string, string>();
+            var loaiDonDict = new Dictionary<string, string>();
+            var loaiBanDict = new Dictionary<string, string>();
+            var khachHangDict = new Dictionary<string, string>();
+
+            var loaiDonIds = new List<string> { donOrder.loaiDon }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var loaiBanIds = new List<string> { donOrder.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var khachHangIds = new List<string> { donOrder.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+                .Include(x => x.Id)
+               .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+               .Project<KhachHang>(khachHangProjection)
+              .ToListAsync();
+            khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            var loaiDonFilter = Builders<LoaiDon>.Filter.In(x => x.Id, loaiDonIds);
+            var loaiDonProjection = Builders<LoaiDon>.Projection
+              .Include(x => x.Id)
+             .Include(x => x.tenLoaiDon);
+            var loaiDons = await _collectionLoaiDon.Find(loaiDonFilter)
+             .Project<LoaiDon>(loaiDonProjection)
+             .ToListAsync();
+            loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+             .Include(x => x.Id)
+            .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+            .Project<LoaiBan>(loaiBanProjection)
+            .ToListAsync();
+            loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+
+            List<MonAn> monAns = new List<MonAn>();
+
+            var monAnIds = donOrder.chiTietDonOrder.SelectMany(x => x.monAns.Select(y => y.monAn)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+            var monAnProjection = Builders<MonAn>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenMonAn)
+                .Include(x => x.giaTien)
+                .Include(x => x.moTa);
+            monAns = await _collectionMonAn.Find(monAnFilter)
+                .Project<MonAn>(monAnProjection)
+                .ToListAsync();
+
+            monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+
+            var donOrderRespond = new DonOrderRespond
             {
-                Id = loaiDon.Id,
-                Name = loaiDon.tenLoaiDon
+                id = donOrder.Id,
+                tenDon = donOrder.tenDon,
+                loaiDon = new IdName
+                {
+                    Id = donOrder.loaiDon,
+                    Name = loaiDonDict.ContainsKey(donOrder.loaiDon) ? loaiDonDict[donOrder.loaiDon] : null
+                },
+                ban = new IdName
+                {
+                    Id = donOrder.ban,
+                    Name = loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = donOrder.khachHang,
+                    Name = khachHangDict.ContainsKey(donOrder.khachHang) ? khachHangDict[donOrder.khachHang] : null
+                },
+                chiTietDonOrder = donOrder.chiTietDonOrder.Select(x => new ChiTietDonOrderRespond
+                {
+                    monAns = x.monAns.Select(y => new DonMonAnRespond
+                    {
+                        monAn = new IdName
+                        {
+                            Id = y.monAn,
+                            Name = monAnDict.ContainsKey(y.monAn) ? monAnDict[y.monAn] : null,
+                        },
+                        monAn_trangThai = y.monAn_trangThai,
+                        soLuong = y.soLuong,
+                        giaTien = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.giaTien : null,
+                        moTa = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.moTa : null
+                    }).ToList(),
+                    trangThai = x.trangThai
+                }).ToList(),
+                trangThai = donOrder.trangThai,
+                tongTien = donOrder.tongTien
             };
             return new RespondAPI<DonOrderRespond>(
                 ResultRespond.Succeeded,

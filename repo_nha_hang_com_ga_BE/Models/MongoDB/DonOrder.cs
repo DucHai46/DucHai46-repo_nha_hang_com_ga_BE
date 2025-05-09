@@ -13,6 +13,7 @@ public class DonOrder : BaseMongoDb
     public string? loaiDon { get; set; }
 
     public string? ban { get; set; }
+    public string? khachHang { get; set; }
 
     public TrangThaiDonOrder? trangThai { get; set; }
 
@@ -33,20 +34,24 @@ public enum TrangThaiDonOrder
 
 public class ChiTietDonOrder
 {
+    // public string? id { get; set; }
     public List<DonMonAn>? monAns { get; set; }
 
-    public int? _trangThai { get; set; }
+    public int? trangThai { get; set; }
 }
 
 public class DonMonAn
 {
+
     public string? monAn { get; set; }
+
+    // public string? tenMonAn { get; set; }
 
     public TrangThaiDonMonAn? monAn_trangThai { get; set; }
 
     public int? soLuong { get; set; }
 
-    public int? giaTien { get; set; }
+    // public int? giaTien { get; set; }
 
     public string? moTa { get; set; }
 }

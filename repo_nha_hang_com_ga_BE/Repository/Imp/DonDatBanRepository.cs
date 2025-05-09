@@ -18,6 +18,8 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class DonDatBanRepository : IDonDatBanRepository
 {
     private readonly IMongoCollection<DonDatBan> _collection;
+    private readonly IMongoCollection<KhachHang> _collectionkhachHang;
+    private readonly IMongoCollection<LoaiBan> _collectionLoaiBan;
     private readonly IMapper _mapper;
 
     public DonDatBanRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -26,6 +28,8 @@ public class DonDatBanRepository : IDonDatBanRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<DonDatBan>("DonDatBan");
+        _collectionkhachHang = database.GetCollection<KhachHang>("KhachHang");
+        _collectionLoaiBan = database.GetCollection<LoaiBan>("LoaiBan");
         _mapper = mapper;
     }
 
@@ -38,14 +42,14 @@ public class DonDatBanRepository : IDonDatBanRepository
             var filter = Builders<DonDatBan>.Filter.Empty;
             filter &= Builders<DonDatBan>.Filter.Eq(x => x.isDelete, false);
 
-            if (!string.IsNullOrEmpty(request.banId))
+            if (!string.IsNullOrEmpty(request.ban))
             {
-                filter &= Builders<DonDatBan>.Filter.Eq(x => x.ban!.Id, request.banId);
+                filter &= Builders<DonDatBan>.Filter.Eq(x => x.ban, request.ban);
             }
 
-            if (!string.IsNullOrEmpty(request.khachHangName))
+            if (!string.IsNullOrEmpty(request.khachHang))
             {
-                filter &= Builders<DonDatBan>.Filter.Regex(x => x.khachHang!.Name, request.khachHangName);
+                filter &= Builders<DonDatBan>.Filter.Regex(x => x.khachHang, request.khachHang);
                 // filter &= Builders<DonDatBan>.Filter.Regex(x => x.khachHang!.Name, new BsonRegularExpression($".*{request.khachHangName}.*"));
             }
 
@@ -65,7 +69,7 @@ public class DonDatBanRepository : IDonDatBanRepository
                 .Include(x => x.khachHang)
                 .Include(x => x.khungGio);
 
-            var findOptions = new FindOptions<DonDatBan, DonDatBanRespond>
+            var findOptions = new FindOptions<DonDatBan, DonDatBan>
             {
                 Projection = projection
             };
@@ -86,11 +90,50 @@ public class DonDatBanRepository : IDonDatBanRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var DonDatBans = await cursor.ToListAsync();
 
+                var loaiBanIds = DonDatBans.Select(x => x.ban).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                var khachHangIds = DonDatBans.Select(x => x.khachHang).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+                var khachHangProjection = Builders<KhachHang>.Projection
+                   .Include(x => x.Id)
+                   .Include(x => x.tenKhachHang);
+                var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+                  .Project<KhachHang>(khachHangProjection)
+                  .ToListAsync();
+
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+                var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+                var donDatBanRespond = DonDatBans.Select(donDatBan => new DonDatBanRespond
+                {
+                    id = donDatBan.Id,
+                    ban = new IdName
+                    {
+                        Id = donDatBan.ban,
+                        Name = loaiBanDict.ContainsKey(donDatBan.ban) ? loaiBanDict[donDatBan.ban] : null
+                    },
+                    khachHang = new IdName
+                    {
+                        Id = donDatBan.khachHang,
+                        Name = khachHangDict.ContainsKey(donDatBan.khachHang) ? khachHangDict[donDatBan.khachHang] : null
+                    },
+                    khungGio = donDatBan.khungGio
+                }).ToList();
+
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<DonDatBanRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = DonDatBans
+                    Data = donDatBanRespond
                 };
 
                 return new RespondAPIPaging<List<DonDatBanRespond>>(
@@ -103,11 +146,49 @@ public class DonDatBanRepository : IDonDatBanRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var DonDatBans = await cursor.ToListAsync();
 
+                var loaiBanIds = DonDatBans.Select(x => x.ban).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                var khachHangIds = DonDatBans.Select(x => x.khachHang).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+                var khachHangProjection = Builders<KhachHang>.Projection
+                   .Include(x => x.Id)
+                   .Include(x => x.tenKhachHang);
+                var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+                  .Project<KhachHang>(khachHangProjection)
+                  .ToListAsync();
+
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+                var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+                var donDatBanRespond = DonDatBans.Select(donDatBan => new DonDatBanRespond
+                {
+                    id = donDatBan.Id,
+                    ban = new IdName
+                    {
+                        Id = donDatBan.ban,
+                        Name = loaiBanDict.ContainsKey(donDatBan.ban) ? loaiBanDict[donDatBan.ban] : null
+                    },
+                    khachHang = new IdName
+                    {
+                        Id = donDatBan.khachHang,
+                        Name = khachHangDict.ContainsKey(donDatBan.khachHang) ? khachHangDict[donDatBan.khachHang] : null
+                    },
+                    khungGio = donDatBan.khungGio
+                }).ToList();
+
                 return new RespondAPIPaging<List<DonDatBanRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<DonDatBanRespond>>
                     {
-                        Data = DonDatBans,
+                        Data = donDatBanRespond,
                         Paging = new PagingDetail(1, DonDatBans.Count, DonDatBans.Count)
                     }
                 );
@@ -136,7 +217,45 @@ public class DonDatBanRepository : IDonDatBanRepository
                 );
             }
 
-            var donDatBanRespond = _mapper.Map<DonDatBanRespond>(donDatBan);
+            // var donDatBanRespond = _mapper.Map<DonDatBanRespond>(donDatBan);
+
+            var loaiBanIds = new List<string> { donDatBan.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var khachHangIds = new List<string> { donDatBan.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                .Project<LoaiBan>(loaiBanProjection)
+                .ToListAsync();
+
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+               .Include(x => x.Id)
+               .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+              .Project<KhachHang>(khachHangProjection)
+              .ToListAsync();
+
+            var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+            var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            var donDatBanRespond = new DonDatBanRespond
+            {
+                id = donDatBan.Id,
+                ban = new IdName
+                {
+                    Id = donDatBan.ban,
+                    Name = loaiBanDict.ContainsKey(donDatBan.ban) ? loaiBanDict[donDatBan.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = donDatBan.khachHang,
+                    Name = khachHangDict.ContainsKey(donDatBan.khachHang) ? khachHangDict[donDatBan.khachHang] : null
+                },
+                khungGio = donDatBan.khungGio
+            };
 
             return new RespondAPI<DonDatBanRespond>(
                 ResultRespond.Succeeded,
@@ -168,7 +287,46 @@ public class DonDatBanRepository : IDonDatBanRepository
 
             await _collection.InsertOneAsync(newDonDatBan);
 
-            var donDatBanRespond = _mapper.Map<DonDatBanRespond>(newDonDatBan);
+            // var donDatBanRespond = _mapper.Map<DonDatBanRespond>(newDonDatBan);
+
+
+            var loaiBanIds = new List<string> { newDonDatBan.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var khachHangIds = new List<string> { newDonDatBan.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                .Project<LoaiBan>(loaiBanProjection)
+                .ToListAsync();
+
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+               .Include(x => x.Id)
+               .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+              .Project<KhachHang>(khachHangProjection)
+              .ToListAsync();
+
+            var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+            var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            var donDatBanRespond = new DonDatBanRespond
+            {
+                id = newDonDatBan.Id,
+                ban = new IdName
+                {
+                    Id = newDonDatBan.ban,
+                    Name = loaiBanDict.ContainsKey(newDonDatBan.ban) ? loaiBanDict[newDonDatBan.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = newDonDatBan.khachHang,
+                    Name = khachHangDict.ContainsKey(newDonDatBan.khachHang) ? khachHangDict[newDonDatBan.khachHang] : null
+                },
+                khungGio = newDonDatBan.khungGio
+            };
 
             return new RespondAPI<DonDatBanRespond>(
                 ResultRespond.Succeeded,
@@ -218,7 +376,44 @@ public class DonDatBanRepository : IDonDatBanRepository
                 );
             }
 
-            var donDatBanRespond = _mapper.Map<DonDatBanRespond>(donDatBan);
+            // var donDatBanRespond = _mapper.Map<DonDatBanRespond>(donDatBan);
+            var loaiBanIds = new List<string> { donDatBan.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var khachHangIds = new List<string> { donDatBan.khachHang }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+            var loaiBanProjection = Builders<LoaiBan>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.tenLoai);
+            var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                .Project<LoaiBan>(loaiBanProjection)
+                .ToListAsync();
+
+            var khachHangFilter = Builders<KhachHang>.Filter.In(x => x.Id, khachHangIds);
+            var khachHangProjection = Builders<KhachHang>.Projection
+               .Include(x => x.Id)
+               .Include(x => x.tenKhachHang);
+            var khachHangs = await _collectionkhachHang.Find(khachHangFilter)
+              .Project<KhachHang>(khachHangProjection)
+              .ToListAsync();
+
+            var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+            var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+
+            var donDatBanRespond = new DonDatBanRespond
+            {
+                id = donDatBan.Id,
+                ban = new IdName
+                {
+                    Id = donDatBan.ban,
+                    Name = loaiBanDict.ContainsKey(donDatBan.ban) ? loaiBanDict[donDatBan.ban] : null
+                },
+                khachHang = new IdName
+                {
+                    Id = donDatBan.khachHang,
+                    Name = khachHangDict.ContainsKey(donDatBan.khachHang) ? khachHangDict[donDatBan.khachHang] : null
+                },
+                khungGio = donDatBan.khungGio
+            };
 
             return new RespondAPI<DonDatBanRespond>(
                 ResultRespond.Succeeded,
