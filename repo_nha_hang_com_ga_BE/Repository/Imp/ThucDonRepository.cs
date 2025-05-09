@@ -148,6 +148,8 @@ public class ThucDonRepository : IThucDonRepository
                     .Project<Combo>(comboProjection)
                     .ToListAsync();
 
+                comboDict = combos.ToDictionary(x => x.Id, x => x.tenCombo);
+
                 var thucDonResponds = thucDons.Select(x => new ThucDonRespond
                 {
                     id = x.Id,
@@ -251,6 +253,8 @@ public class ThucDonRepository : IThucDonRepository
                 var combos = await _collectionCombo.Find(comboFilter)
                     .Project<Combo>(comboProjection)
                     .ToListAsync();
+
+                comboDict = combos.ToDictionary(x => x.Id, x => x.tenCombo);
 
                 var thucDonResponds = thucDons.Select(x => new ThucDonRespond
                 {
