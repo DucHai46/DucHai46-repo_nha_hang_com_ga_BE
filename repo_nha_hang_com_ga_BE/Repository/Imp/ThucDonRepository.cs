@@ -174,6 +174,7 @@ public class ThucDonRepository : IThucDonRepository
                         giaTien = comboDict.ContainsKey(y.id) ? combos.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
                         moTa = comboDict.ContainsKey(y.id) ? combos.FirstOrDefault(m => m.Id == y.id)?.moTa : null
                     }).ToList(),
+                    trangThai = x.trangThai
                 }).ToList();
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
@@ -277,6 +278,7 @@ public class ThucDonRepository : IThucDonRepository
                         giaTien = comboDict.ContainsKey(y.id) ? combos.FirstOrDefault(m => m.Id == y.id)?.giaTien : null,
                         moTa = comboDict.ContainsKey(y.id) ? combos.FirstOrDefault(m => m.Id == y.id)?.moTa : null
                     }).ToList(),
+                    trangThai = x.trangThai
                 }).ToList();
 
                 return new RespondAPIPaging<List<ThucDonRespond>>(
@@ -385,6 +387,7 @@ public class ThucDonRepository : IThucDonRepository
                     giaTien = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.giaTien : null,
                     moTa = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.moTa : null
                 }).ToList(),
+                trangThai = thucDon.trangThai
             };
 
             return new RespondAPI<ThucDonRespond>(
@@ -490,6 +493,7 @@ public class ThucDonRepository : IThucDonRepository
                     giaTien = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.giaTien : null,
                     moTa = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.moTa : null
                 }).ToList(),
+                trangThai = newThucDon.trangThai
             };
 
             return new RespondAPI<ThucDonRespond>(
@@ -613,6 +617,7 @@ public class ThucDonRepository : IThucDonRepository
                     giaTien = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.giaTien : null,
                     moTa = comboDict.ContainsKey(x.id) ? combos.FirstOrDefault(m => m.Id == x.id)?.moTa : null
                 }).ToList(),
+                trangThai = thucDon.trangThai
             };
 
             return new RespondAPI<ThucDonRespond>(
