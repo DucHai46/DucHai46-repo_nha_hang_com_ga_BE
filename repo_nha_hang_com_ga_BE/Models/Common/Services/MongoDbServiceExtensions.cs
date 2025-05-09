@@ -33,8 +33,8 @@ namespace repo_nha_hang_com_ga_BE.Models.Common.Services
             services.AddSingleton<IMenuDynamicRepository, MenuDynamicRepository>();
             services.AddSingleton<IGiamGiaRepository, GiamGiaRepository>();
             services.AddSingleton<IDonDatBanRepository, DonDatBanRepository>();
-            // services.AddSingleton<IDonOrderRepository, DonOrderRepository>();
-            // services.AddSingleton<ILoaiDonRepository, LoaiDonRepository>();
+            services.AddSingleton<IDonOrderRepository, DonOrderRepository>();
+            services.AddSingleton<ILoaiDonRepository, LoaiDonRepository>();
 
             return services;
         }

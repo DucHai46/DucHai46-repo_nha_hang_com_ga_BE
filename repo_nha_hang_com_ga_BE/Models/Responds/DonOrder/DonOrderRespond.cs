@@ -11,7 +11,7 @@ public class DonOrderRespond
     [BsonRepresentation(BsonType.ObjectId)]
     public string? id { get; set; }
     public string? tenDon { get; set; }
-    public string? loaiDon { get; set; }
+    public IdName? loaiDon { get; set; }
     public IdName? ban { get; set; }
     public TrangThaiDonOrder? trangThai { get; set; }
     public List<ChiTietDonOrder>? chiTietDonOrder { get; set; }

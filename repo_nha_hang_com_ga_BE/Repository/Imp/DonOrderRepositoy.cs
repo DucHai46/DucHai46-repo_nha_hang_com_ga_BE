@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -17,6 +18,9 @@ namespace repo_nha_hang_com_ga_BE.Repository.Imp;
 public class DonOrderRepository : IDonOrderRepository
 {
     private readonly IMongoCollection<DonOrder> _collection;
+    private readonly IMongoCollection<LoaiBan> _collectionLoaiBan;
+    private readonly IMongoCollection<LoaiDon> _collectionLoaiDon;
+
     private readonly IMapper _mapper;
 
     public DonOrderRepository(IOptions<MongoDbSettings> settings, IMapper mapper)
@@ -25,6 +29,8 @@ public class DonOrderRepository : IDonOrderRepository
         var client = new MongoClient(mongoClientSettings.Connection);
         var database = client.GetDatabase(mongoClientSettings.DatabaseName);
         _collection = database.GetCollection<DonOrder>("DonOrder");
+        _collectionLoaiBan = database.GetCollection<LoaiBan>("LoaiBan");
+        _collectionLoaiDon = database.GetCollection<LoaiDon>("LoaiDon");
         _mapper = mapper;
     }
 
@@ -48,20 +54,15 @@ public class DonOrderRepository : IDonOrderRepository
                 // filter &= Builders<DonOrder>.Filter.Regex(x => x.khachHang!.Name, new BsonRegularExpression($".*{request.khachHangName}.*"));
             }
 
-            if (!string.IsNullOrEmpty(request.banId))
+            if (!string.IsNullOrEmpty(request.ban))
             {
-                filter &= Builders<DonOrder>.Filter.Eq(x => x.ban!.Id, request.banId);
+                filter &= Builders<DonOrder>.Filter.Eq(x => x.ban, request.ban);
             }
 
             if (request.trangThai.HasValue) // Kiểm tra nếu trangThai có giá trị: True hoặc False
             {
                 filter &= Builders<DonOrder>.Filter.Eq(x => x.trangThai, request.trangThai);
             }
-
-            // if (request.ban != null)
-            // {
-            //     filter &= Builders<DonOrder>.Filter.Eq(x => x.ban, request.ban);
-            // }
 
             var projection = Builders<DonOrder>.Projection
                 .Include(x => x.Id)
@@ -72,7 +73,7 @@ public class DonOrderRepository : IDonOrderRepository
                 .Include(x => x.chiTietDonOrder)
                 .Include(x => x.tongTien);
 
-            var findOptions = new FindOptions<DonOrder, DonOrderRespond>
+            var findOptions = new FindOptions<DonOrder, DonOrder>
             {
                 Projection = projection
             };
@@ -82,7 +83,6 @@ public class DonOrderRepository : IDonOrderRepository
                 long totalRecords = await collection.CountDocumentsAsync(filter);
 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / request.PageSize);
-
                 int currentPage = request.PageNumber;
                 if (currentPage < 1) currentPage = 1;
                 if (currentPage > totalPages) currentPage = totalPages;
@@ -91,13 +91,60 @@ public class DonOrderRepository : IDonOrderRepository
                 findOptions.Limit = request.PageSize;
 
                 var cursor = await collection.FindAsync(filter, findOptions);
-                var DonOrders = await cursor.ToListAsync();
+                // var bans = await cursor.ToListAsync();
+                var dons = await cursor.ToListAsync();
+
+                // Lấy danh sách ID loại bàn
+                var loaiBanIds = dons.Select(x => x.ban).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Lấy danh sách ID loại đơn order 
+                var loaiDonIds = dons.Select(x => x.loaiDon).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                // Query bảng loại đơn
+                var loaiDonFilter = Builders<LoaiDon>.Filter.In(x => x.Id, loaiDonIds);
+                var loaiDonProjection = Builders<LoaiDon>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoaiDon);
+                var loaiDons = await _collectionLoaiDon.Find(loaiDonFilter)
+                    .Project<LoaiDon>(loaiDonProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+                var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+
+                // Map dữ liệu
+                var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
+                {
+                    id = donOrder.Id,
+                    tenDon = donOrder.tenDon,
+                    loaiDon = new IdName
+                    {
+                        Id = donOrder.loaiDon,
+                        Name = donOrder.loaiDon != null && loaiDonDict.ContainsKey(donOrder.loaiDon) ? loaiDonDict[donOrder.loaiDon] : null
+                    },
+                    ban = new IdName
+                    {
+                        Id = donOrder.ban,
+                        Name = donOrder.ban != null && loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
+                    },
+                    trangThai = donOrder.trangThai,
+                }).ToList();
 
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<DonOrderRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = DonOrders
+                    Data = donOrderResponds
                 };
 
                 return new RespondAPIPaging<List<DonOrderRespond>>(
@@ -108,14 +155,61 @@ public class DonOrderRepository : IDonOrderRepository
             else
             {
                 var cursor = await collection.FindAsync(filter, findOptions);
-                var DonOrders = await cursor.ToListAsync();
+                // var bans = await cursor.ToListAsync();
+                var dons = await cursor.ToListAsync();
+
+                // Lấy danh sách ID loại bàn
+                var loaiBanIds = dons.Select(x => x.ban).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Lấy danh sách ID loại đơn order 
+                var loaiDonIds = dons.Select(x => x.loaiDon).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var loaiBanFilter = Builders<LoaiBan>.Filter.In(x => x.Id, loaiBanIds);
+                var loaiBanProjection = Builders<LoaiBan>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoai);
+                var loaiBans = await _collectionLoaiBan.Find(loaiBanFilter)
+                    .Project<LoaiBan>(loaiBanProjection)
+                    .ToListAsync();
+
+                // Query bảng loại đơn
+                var loaiDonFilter = Builders<LoaiDon>.Filter.In(x => x.Id, loaiDonIds);
+                var loaiDonProjection = Builders<LoaiDon>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.tenLoaiDon);
+                var loaiDons = await _collectionLoaiDon.Find(loaiDonFilter)
+                    .Project<LoaiDon>(loaiDonProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var loaiBanDict = loaiBans.ToDictionary(x => x.Id, x => x.tenLoai);
+                var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
+
+                // Map dữ liệu
+                var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
+                {
+                    id = donOrder.Id,
+                    tenDon = donOrder.tenDon,
+                    loaiDon = new IdName
+                    {
+                        Id = donOrder.loaiDon,
+                        Name = donOrder.loaiDon != null && loaiDonDict.ContainsKey(donOrder.loaiDon) ? loaiDonDict[donOrder.loaiDon] : null
+                    },
+                    ban = new IdName
+                    {
+                        Id = donOrder.ban,
+                        Name = donOrder.ban != null && loaiBanDict.ContainsKey(donOrder.ban) ? loaiBanDict[donOrder.ban] : null
+                    },
+                    trangThai = donOrder.trangThai,
+                }).ToList();
 
                 return new RespondAPIPaging<List<DonOrderRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<DonOrderRespond>>
                     {
-                        Data = DonOrders,
-                        Paging = new PagingDetail(1, DonOrders.Count, DonOrders.Count)
+                        Data = donOrderResponds,
+                        Paging = new PagingDetail(1, donOrderResponds.Count(), donOrderResponds.Count())
                     }
                 );
             }
@@ -143,7 +237,14 @@ public class DonOrderRepository : IDonOrderRepository
                 );
             }
 
+            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == donOrder.loaiDon).FirstOrDefaultAsync();
             var donOrderRespond = _mapper.Map<DonOrderRespond>(donOrder);
+
+            donOrderRespond.loaiDon = new IdName
+            {
+                Id = loaiDon.Id,
+                Name = loaiDon.tenLoaiDon
+            };
 
             return new RespondAPI<DonOrderRespond>(
                 ResultRespond.Succeeded,
@@ -174,9 +275,13 @@ public class DonOrderRepository : IDonOrderRepository
             // newDanhMucNguyenLieu.updatedUser = currentUser.Id;
 
             await _collection.InsertOneAsync(newDonOrder);
-
+            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == newDonOrder.loaiDon).FirstOrDefaultAsync();
             var donOrderRespond = _mapper.Map<DonOrderRespond>(newDonOrder);
-
+            donOrderRespond.loaiDon = new IdName
+            {
+                Id = loaiDon.Id,
+                Name = loaiDon.tenLoaiDon
+            };
             return new RespondAPI<DonOrderRespond>(
                 ResultRespond.Succeeded,
                 "Tạo đơn order thành công.",
@@ -226,7 +331,12 @@ public class DonOrderRepository : IDonOrderRepository
             }
 
             var donOrderRespond = _mapper.Map<DonOrderRespond>(donOrder);
-
+            var loaiDon = await _collectionLoaiDon.Find(x => x.Id == donOrder.loaiDon).FirstOrDefaultAsync();
+            donOrderRespond.loaiDon = new IdName
+            {
+                Id = loaiDon.Id,
+                Name = loaiDon.tenLoaiDon
+            };
             return new RespondAPI<DonOrderRespond>(
                 ResultRespond.Succeeded,
                 "Cập nhật đơn order thành công.",

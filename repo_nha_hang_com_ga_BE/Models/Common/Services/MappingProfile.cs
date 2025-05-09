@@ -165,12 +165,15 @@ public class MappingProfile : Profile
 
         //Đơn Order
         // CreateMap(typeof(DonOrder), typeof(DonOrderRespond));
-        // CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
-        // CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
+        CreateMap<DonOrder, DonOrderRespond>()
+            .ForMember(dest => dest.ban, opt => opt.Ignore())
+           .ForMember(dest => dest.loaiDon, opt => opt.Ignore());
+        CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
+        CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
 
         //Loại đơn order
-        // CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
-        // CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
-        // CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
+        CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
+        CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
+        CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
     }
 }
