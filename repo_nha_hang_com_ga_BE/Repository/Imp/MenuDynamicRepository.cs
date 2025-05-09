@@ -99,6 +99,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 {
                     id = menuDynamic.Id,
                     label = menuDynamic.label,
+                    routeLink = menuDynamic.routeLink,
+                    icon = menuDynamic.icon,
                     parent = new IdName
                     {
                         Id = menuDynamic.parent,
@@ -144,6 +146,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 {
                     id = menuDynamic.Id,
                     label = menuDynamic.label,
+                    routeLink = menuDynamic.routeLink,
+                    icon = menuDynamic.icon,
                     parent = new IdName
                     {
                         Id = menuDynamic.parent,
@@ -190,6 +194,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
             {
                 id = menuDynamic.Id,
                 label = menuDynamic.label,
+                routeLink = menuDynamic.routeLink,
+                icon = menuDynamic.icon,
                 parent = new IdName
                 {
                     Id = menuDynamic.parent,
@@ -233,6 +239,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
             {
                 id = newMenuDynamic.Id,
                 label = newMenuDynamic.label,
+                routeLink = newMenuDynamic.routeLink,
+                icon = newMenuDynamic.icon,
                 parent = new IdName
                 {
                     Id = newMenuDynamic.parent,
@@ -293,6 +301,8 @@ public class MenuDynamicRepository : IMenuDynamicRepository
             {
                 id = menuDynamic.Id,
                 label = menuDynamic.label,
+                routeLink = menuDynamic.routeLink,
+                icon = menuDynamic.icon,
                 parent = new IdName
                 {
                     Id = menuDynamic.parent,
