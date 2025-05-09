@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <OutputType>Exe</OutputType>
         <AssemblyName>repo_nha_hang_com_ga_BE</AssemblyName>
+        <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     </PropertyGroup>
 
     <ItemGroup>

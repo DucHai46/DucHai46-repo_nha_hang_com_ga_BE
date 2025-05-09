@@ -128,7 +128,7 @@ public class MappingProfile : Profile
         CreateMap(typeof(RequestUpdateLoaiBan), typeof(LoaiBan));
 
         //Thực đơn
-        CreateMap(typeof(ThucDon), typeof(ThucDonRespond));
+        // CreateMap(typeof(ThucDon), typeof(ThucDonRespond));
         CreateMap(typeof(RequestAddThucDon), typeof(ThucDon));
         CreateMap(typeof(RequestUpdateThucDon), typeof(ThucDon));
 
