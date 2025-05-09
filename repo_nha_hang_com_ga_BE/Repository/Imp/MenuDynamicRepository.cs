@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using repo_nha_hang_com_ga_BE.Models.Common;
+using repo_nha_hang_com_ga_BE.Models.Common.Models;
 using repo_nha_hang_com_ga_BE.Models.Common.Models.Respond;
 using repo_nha_hang_com_ga_BE.Models.Common.Paging;
 using repo_nha_hang_com_ga_BE.Models.Common.Respond;
@@ -37,31 +38,33 @@ public class MenuDynamicRepository : IMenuDynamicRepository
 
             if (!string.IsNullOrEmpty(request.label))
             {
-                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.Label, new BsonRegularExpression($".*{request.label}.*"));
+                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.label, new BsonRegularExpression($".*{request.label}.*"));
             }
-            if (!string.IsNullOrEmpty(request.parent))
+
+            if (!string.IsNullOrEmpty(request.parentId))
             {
-                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.Parent, new BsonRegularExpression($".*{request.parent}.*"));
-            }  
-            if (request.position != null)
+                filter &= Builders<MenuDynamic>.Filter.Eq(x => x.parent, request.parentId);
+            }
+
+            if (request.isActive != null)
             {
-                filter &= Builders<MenuDynamic>.Filter.Eq(x => x.Position, request.position);
-            }                 
+                filter &= Builders<MenuDynamic>.Filter.Eq(x => x.isActive, request.isActive);
+            }
 
 
             var projection = Builders<MenuDynamic>.Projection
                 .Include(x => x.Id)
-                .Include(x => x.RouteLink)
-                .Include(x => x.Icon)
-                .Include(x => x.Label)
-                .Include(x => x.Parent)
-                .Include(x => x.IsOpen)
-                .Include(x => x.Position)
-                .Include(x => x.IsActive);
-                // .Include(x => x.Children);
+                .Include(x => x.routeLink)
+                .Include(x => x.icon)
+                .Include(x => x.label)
+                .Include(x => x.isOpen)
+                .Include(x => x.parent)
+                .Include(x => x.position)
+                .Include(x => x.isActive);
+            // .Include(x => x.Children);
 
 
-            var findOptions = new FindOptions<MenuDynamic, MenuDynamicRespond>
+            var findOptions = new FindOptions<MenuDynamic, MenuDynamic>
             {
                 Projection = projection
             };
@@ -82,11 +85,42 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var menuDynamics = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var parentIds = menuDynamics.Select(x => x.parent).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var parentFilter = Builders<MenuDynamic>.Filter.In(x => x.Id, parentIds);
+                var parentProjection = Builders<MenuDynamic>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.label);
+                var parents = await _collection.Find(parentFilter)
+                    .Project<MenuDynamic>(parentProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var parentDict = parents.ToDictionary(x => x.Id, x => x.label);
+
+                // Map dữ liệu
+                var menuDynamicResponds = menuDynamics.Select(menuDynamic => new MenuDynamicRespond
+                {
+                    id = menuDynamic.Id,
+                    label = menuDynamic.label,
+                    routeLink = menuDynamic.routeLink,
+                    icon = menuDynamic.icon,
+                    parent = new IdName
+                    {
+                        Id = menuDynamic.parent,
+                        Name = menuDynamic.parent != null && parentDict.ContainsKey(menuDynamic.parent) ? parentDict[menuDynamic.parent] : null
+                    },
+                    position = menuDynamic.position,
+                    isActive = menuDynamic.isActive
+                }).ToList();
+
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<MenuDynamicRespond>>
                 {
                     Paging = pagingDetail,
-                    Data = menuDynamics
+                    Data = menuDynamicResponds
                 };
 
                 return new RespondAPIPaging<List<MenuDynamicRespond>>(
@@ -99,12 +133,43 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 var cursor = await collection.FindAsync(filter, findOptions);
                 var menuDynamics = await cursor.ToListAsync();
 
+                // Lấy danh sách ID loại bàn
+                var parentIds = menuDynamics.Select(x => x.parent).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                // Query bảng loại bàn
+                var parentFilter = Builders<MenuDynamic>.Filter.In(x => x.Id, parentIds);
+                var parentProjection = Builders<MenuDynamic>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.label);
+                var parents = await _collection.Find(parentFilter)
+                    .Project<MenuDynamic>(parentProjection)
+                    .ToListAsync();
+
+                // Tạo dictionary để map nhanh
+                var parentDict = parents.ToDictionary(x => x.Id, x => x.label);
+
+                // Map dữ liệu
+                var menuDynamicResponds = menuDynamics.Select(menuDynamic => new MenuDynamicRespond
+                {
+                    id = menuDynamic.Id,
+                    label = menuDynamic.label,
+                    routeLink = menuDynamic.routeLink,
+                    icon = menuDynamic.icon,
+                    parent = new IdName
+                    {
+                        Id = menuDynamic.parent,
+                        Name = menuDynamic.parent != null && parentDict.ContainsKey(menuDynamic.parent) ? parentDict[menuDynamic.parent] : null
+                    },
+                    position = menuDynamic.position,
+                    isActive = menuDynamic.isActive
+                }).ToList();
+
                 return new RespondAPIPaging<List<MenuDynamicRespond>>(
                     ResultRespond.Succeeded,
                     data: new PagingResponse<List<MenuDynamicRespond>>
                     {
-                        Data = menuDynamics,
-                        Paging = new PagingDetail(1, menuDynamics.Count, menuDynamics.Count)
+                        Data = menuDynamicResponds,
+                        Paging = new PagingDetail(1, menuDynamicResponds.Count, menuDynamicResponds.Count)
                     }
                 );
             }
@@ -132,7 +197,21 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 );
             }
 
-            var menuDynamicRespond = _mapper.Map<MenuDynamicRespond>(menuDynamic);
+            var parent = await _collection.Find(x => x.Id == menuDynamic.parent).FirstOrDefaultAsync();
+            var menuDynamicRespond = new MenuDynamicRespond
+            {
+                id = menuDynamic.Id,
+                label = menuDynamic.label,
+                routeLink = menuDynamic.routeLink,
+                icon = menuDynamic.icon,
+                parent = new IdName
+                {
+                    Id = menuDynamic.parent,
+                    Name = parent != null ? parent.label : null
+                },
+                position = menuDynamic.position,
+                isActive = menuDynamic.isActive
+            };
 
             return new RespondAPI<MenuDynamicRespond>(
                 ResultRespond.Succeeded,
@@ -164,8 +243,21 @@ public class MenuDynamicRepository : IMenuDynamicRepository
 
             await _collection.InsertOneAsync(newMenuDynamic);
 
-            var menuDynamicRespond = _mapper.Map<MenuDynamicRespond>(newMenuDynamic);
-
+            var parent = await _collection.Find(x => x.Id == newMenuDynamic.parent).FirstOrDefaultAsync();
+            var menuDynamicRespond = new MenuDynamicRespond
+            {
+                id = newMenuDynamic.Id,
+                label = newMenuDynamic.label,
+                routeLink = newMenuDynamic.routeLink,
+                icon = newMenuDynamic.icon,
+                parent = new IdName
+                {
+                    Id = newMenuDynamic.parent,
+                    Name = parent != null ? parent.label : null
+                },
+                position = newMenuDynamic.position,
+                isActive = newMenuDynamic.isActive
+            };
             return new RespondAPI<MenuDynamicRespond>(
                 ResultRespond.Succeeded,
                 "Tạo menu thành công.",
@@ -214,7 +306,21 @@ public class MenuDynamicRepository : IMenuDynamicRepository
                 );
             }
 
-            var menuDynamicRespond = _mapper.Map<MenuDynamicRespond>(menuDynamic);
+            var parent = await _collection.Find(x => x.Id == menuDynamic.parent).FirstOrDefaultAsync();
+            var menuDynamicRespond = new MenuDynamicRespond
+            {
+                id = menuDynamic.Id,
+                label = menuDynamic.label,
+                routeLink = menuDynamic.routeLink,
+                icon = menuDynamic.icon,
+                parent = new IdName
+                {
+                    Id = menuDynamic.parent,
+                    Name = parent != null ? parent.label : null
+                },
+                position = menuDynamic.position,
+                isActive = menuDynamic.isActive
+            };
 
             return new RespondAPI<MenuDynamicRespond>(
                 ResultRespond.Succeeded,
