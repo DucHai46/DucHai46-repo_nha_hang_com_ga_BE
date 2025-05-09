@@ -15,9 +15,6 @@ public class ThucDon : BaseMongoDb
 public class ComboMenu
 {
     public string? id { get; set; }
-    public string? hinhAnh { get; set; }
-    public int? giaTien { get; set; }
-    public string? moTa { get; set; }
 }
 
 public enum TrangThaiThucDon
