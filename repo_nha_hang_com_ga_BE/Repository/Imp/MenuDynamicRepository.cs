@@ -37,28 +37,18 @@ public class MenuDynamicRepository : IMenuDynamicRepository
 
             if (!string.IsNullOrEmpty(request.label))
             {
-                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.Label, new BsonRegularExpression($".*{request.label}.*"));
+                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.label, new BsonRegularExpression($".*{request.label}.*"));
             }
-            if (!string.IsNullOrEmpty(request.parent))
-            {
-                filter &= Builders<MenuDynamic>.Filter.Regex(x => x.Parent, new BsonRegularExpression($".*{request.parent}.*"));
-            }  
-            if (request.position != null)
-            {
-                filter &= Builders<MenuDynamic>.Filter.Eq(x => x.Position, request.position);
-            }                 
 
 
             var projection = Builders<MenuDynamic>.Projection
                 .Include(x => x.Id)
-                .Include(x => x.RouteLink)
-                .Include(x => x.Icon)
-                .Include(x => x.Label)
-                .Include(x => x.Parent)
-                .Include(x => x.IsOpen)
-                .Include(x => x.Position)
-                .Include(x => x.IsActive);
-                // .Include(x => x.Children);
+                .Include(x => x.routeLink)
+                .Include(x => x.icon)
+                .Include(x => x.label)
+                .Include(x => x.isOpen)
+                .Include(x => x.children);
+            // .Include(x => x.Children);
 
 
             var findOptions = new FindOptions<MenuDynamic, MenuDynamicRespond>
