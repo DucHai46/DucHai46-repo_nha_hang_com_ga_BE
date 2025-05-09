@@ -46,6 +46,12 @@ using repo_nha_hang_com_ga_BE.Models.Requests.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Responds.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Requests.LoaiDon;
 using repo_nha_hang_com_ga_BE.Models.Responds.LoaiDon;
+using repo_nha_hang_com_ga_BE.Models.Requests.NhaHang;
+using repo_nha_hang_com_ga_BE.Models.Responds.NhaHang;
+using repo_nha_hang_com_ga_BE.Models.Requests.ChucVu;
+using repo_nha_hang_com_ga_BE.Models.Responds.ChucVu;
+using repo_nha_hang_com_ga_BE.Models.Requests.NhanVien;
+using repo_nha_hang_com_ga_BE.Models.Responds.NhanVien;
 
 
 namespace repo_nha_hang_com_ga_BE.Models.Common.Services;
@@ -173,5 +179,21 @@ public class MappingProfile : Profile
         // CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
         // CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
         // CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
+
+        //Nhà hàng
+        CreateMap(typeof(NhaHang), typeof(NhaHangRespond));
+        CreateMap(typeof(RequestAddNhaHang), typeof(NhaHang));
+        CreateMap(typeof(RequestUpdateNhaHang), typeof(NhaHang));
+
+        //Chức vụ
+        CreateMap(typeof(ChucVu), typeof(ChucVuRespond));
+        CreateMap(typeof(RequestAddChucVu), typeof(ChucVu));
+        CreateMap(typeof(RequestUpdateChucVu), typeof(ChucVu));
+
+        //Nhân viên
+        // CreateMap(typeof(NhanVien), typeof(NhanVienRespond))
+        //     .ForMember(dest => dest.chucVu, opt => opt.Ignore());
+        CreateMap(typeof(RequestAddNhanVien), typeof(NhanVien));
+        CreateMap(typeof(RequestUpdateNhanVien), typeof(NhanVien));
     }
 }
