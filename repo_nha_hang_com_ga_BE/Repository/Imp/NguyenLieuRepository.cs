@@ -153,17 +153,17 @@ public class NguyenLieuRepository : INguyenLieuRepository
                     loaiNguyenLieu = new IdName
                     {
                         Id = nguyenLieu.loaiNguyenLieu,
-                        Name = loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu]
+                        Name = loaiNguyenLieuDict.ContainsKey(nguyenLieu.loaiNguyenLieu) ? loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu] : null
                     },
                     donViTinh = new IdName
                     {
                         Id = nguyenLieu.donViTinh,
-                        Name = donViTinhDict[nguyenLieu.donViTinh]
+                        Name = donViTinhDict.ContainsKey(nguyenLieu.donViTinh) ? donViTinhDict[nguyenLieu.donViTinh] : null
                     },
                     tuDo = new IdName
                     {
                         Id = nguyenLieu.tuDo,
-                        Name = tuDoDict[nguyenLieu.tuDo]
+                        Name = tuDoDict.ContainsKey(nguyenLieu.tuDo) ? tuDoDict[nguyenLieu.tuDo] : null
                     }
                 }).ToList();
 
@@ -234,17 +234,17 @@ public class NguyenLieuRepository : INguyenLieuRepository
                     loaiNguyenLieu = new IdName
                     {
                         Id = nguyenLieu.loaiNguyenLieu,
-                        Name = loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu]
+                        Name = loaiNguyenLieuDict.ContainsKey(nguyenLieu.loaiNguyenLieu) ? loaiNguyenLieuDict[nguyenLieu.loaiNguyenLieu] : null
                     },
                     donViTinh = new IdName
                     {
                         Id = nguyenLieu.donViTinh,
-                        Name = donViTinhDict[nguyenLieu.donViTinh]
+                        Name = donViTinhDict.ContainsKey(nguyenLieu.donViTinh) ? donViTinhDict[nguyenLieu.donViTinh] : null
                     },
                     tuDo = new IdName
                     {
                         Id = nguyenLieu.tuDo,
-                        Name = tuDoDict[nguyenLieu.tuDo]
+                        Name = tuDoDict.ContainsKey(nguyenLieu.tuDo) ? tuDoDict[nguyenLieu.tuDo] : null
                     }
                 }).ToList();
 

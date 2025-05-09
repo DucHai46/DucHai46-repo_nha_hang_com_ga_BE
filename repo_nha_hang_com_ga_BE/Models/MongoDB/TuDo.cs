@@ -7,6 +7,6 @@ public class TuDo : BaseMongoDb
 {
     public string? tenTuDo { get; set; }
     public string? moTa { get; set; }
-    public IdName? loaiTuDo { get; set; }
+    public string? loaiTuDo { get; set; }
 }
 

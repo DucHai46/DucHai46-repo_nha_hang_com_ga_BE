@@ -106,11 +106,21 @@ public class ComboRepository : IComboRepository
                         .Include(x => x.hinhAnh)
                         .Include(x => x.giaTien)
                         .Include(x => x.moTa);
-                    monAns = await _collectionMonAn.Find(monAnFilter)
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
 
-                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
+
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
                 var comboResponds = combos.Select(combo => new ComboRespond
@@ -181,11 +191,21 @@ public class ComboRepository : IComboRepository
                         .Include(x => x.hinhAnh)
                         .Include(x => x.giaTien)
                         .Include(x => x.moTa);
-                    monAns = await _collectionMonAn.Find(monAnFilter)
+                    var newMonAns = await _collectionMonAn.Find(monAnFilter)
                         .Project<MonAn>(monAnProjection)
                         .ToListAsync();
 
-                    monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
+                    monAns.AddRange(uniqueMonAns);
+
+                    var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+                    foreach (var item in newDict)
+                    {
+                        if (!monAnDict.ContainsKey(item.Key))
+                        {
+                            monAnDict.Add(item.Key, item.Value);
+                        }
+                    }
                 }
 
                 var comboResponds = combos.Select(combo => new ComboRespond

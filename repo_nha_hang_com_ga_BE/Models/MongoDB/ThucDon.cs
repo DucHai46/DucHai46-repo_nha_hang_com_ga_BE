@@ -12,12 +12,9 @@ public class ThucDon : BaseMongoDb
     public TrangThaiThucDon? trangThai { get; set; }
 }
 
-public class ComboMenu : IdName
+public class ComboMenu
 {
-    // public List<LoaiMonAnMenu>? loaiMonAns { get; set; }
-    public string? hinhAnh { get; set; }
-    public string? giaTien { get; set; }
-    public string? moTa { get; set; }
+    public string? id { get; set; }
 }
 
 public enum TrangThaiThucDon
