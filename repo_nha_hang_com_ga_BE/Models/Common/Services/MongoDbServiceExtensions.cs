@@ -39,6 +39,8 @@ namespace repo_nha_hang_com_ga_BE.Models.Common.Services
             services.AddSingleton<IDonOrderRepository, DonOrderRepository>();
             services.AddSingleton<ILoaiDonRepository, LoaiDonRepository>();
             services.AddSingleton<IPhuongThucThanhToanRepository, PhuongThucThanhToanRepository>();
+            services.AddSingleton<IPhuPhiRepository, PhuPhiRepository>();
+            services.AddSingleton<IHoaDonThanhToanRepository, HoaDonThanhToanRepository>();
 
             return services;
         }

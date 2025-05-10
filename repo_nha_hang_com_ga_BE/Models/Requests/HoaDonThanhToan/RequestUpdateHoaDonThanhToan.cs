@@ -1,9 +1,9 @@
+﻿using repo_nha_hang_com_ga_BE.Models.Common.Models;
+using repo_nha_hang_com_ga_BE.Models.MongoDB;
 
-using System.ComponentModel;
-using repo_nha_hang_com_ga_BE.Models.Common;
+namespace repo_nha_hang_com_ga_BE.Models.Requests.HoaDonThanhToan;
 
-namespace repo_nha_hang_com_ga_BE.Models.MongoDB;
-public class HoaDonThanhToan : BaseMongoDb
+public class RequestUpdateHoaDonThanhToan
 {
     public string? nhanVien { get; set; }
     public string? donOrder { get; set; }
@@ -17,13 +17,4 @@ public class HoaDonThanhToan : BaseMongoDb
     public string? khuyenMai { get; set; }
     public string? phuPhi { get; set; }
     public TrangThaiHoaDon? trangthai { get; set; }
-
-}
-
-public enum TrangThaiHoaDon
-{
-    [Description("Chưa thanh toán")]
-    ChuaThanhToan = 0,
-    [Description("Đã thanh toán")]
-    DaThanhToan = 1,
 }

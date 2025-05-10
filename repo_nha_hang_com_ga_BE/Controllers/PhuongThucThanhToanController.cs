@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-// using repo_nha_hang_com_ga_BE.Models.Requests.PhuongThucThanhToan;
 using repo_nha_hang_com_ga_BE.Repository;
 using Microsoft.AspNetCore.Authorization;
 using repo_nha_hang_com_ga_BE.Models.Requests;

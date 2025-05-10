@@ -54,6 +54,9 @@ using repo_nha_hang_com_ga_BE.Models.Requests.ChucVu;
 using repo_nha_hang_com_ga_BE.Models.Responds.ChucVu;
 using repo_nha_hang_com_ga_BE.Models.Requests.NhanVien;
 using repo_nha_hang_com_ga_BE.Models.Responds.NhanVien;
+using repo_nha_hang_com_ga_BE.Models.Responds.PhuPhi;
+using repo_nha_hang_com_ga_BE.Models.Responds.HoaDonThanhToan;
+using repo_nha_hang_com_ga_BE.Models.Requests.HoaDonThanhToan;
 
 
 namespace repo_nha_hang_com_ga_BE.Models.Common.Services;
@@ -206,5 +209,15 @@ public class MappingProfile : Profile
         //     .ForMember(dest => dest.chucVu, opt => opt.Ignore());
         CreateMap(typeof(RequestAddNhanVien), typeof(NhanVien));
         CreateMap(typeof(RequestUpdateNhanVien), typeof(NhanVien));
+
+        // Phụ Phí
+        CreateMap(typeof(PhuPhi), typeof(PhuPhiRespond));
+        CreateMap(typeof(RequestAddPhuPhi), typeof(PhuPhi));
+        CreateMap(typeof(RequestUpdatePhuPhi), typeof(PhuPhi));
+
+        // Hóa đơn thanh toán
+        // CreateMap(typeof(HoaDonThanhToan), typeof(HoaDonThanhToanRespond));
+        CreateMap(typeof(RequestAddHoaDonThanhToan), typeof(HoaDonThanhToan));
+        CreateMap(typeof(RequestUpdateHoaDonThanhToan), typeof(HoaDonThanhToan));
     }
 }
