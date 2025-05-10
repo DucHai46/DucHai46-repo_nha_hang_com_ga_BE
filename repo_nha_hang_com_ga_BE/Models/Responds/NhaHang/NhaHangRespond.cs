@@ -19,4 +19,5 @@ public class NhaHangRespond
     public string? logo { get; set; }
     public string? banner { get; set; }
     public string? moTa { get; set; }
+    public bool isActive { get; set; }
 }

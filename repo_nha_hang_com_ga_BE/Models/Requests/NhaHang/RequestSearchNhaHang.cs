@@ -6,4 +6,5 @@ public class RequestSearchNhaHang : PagingParameterModel
 {
     public string? tenNhaHang { get; set; }
 
+    public bool? isActive { get; set; }
 }

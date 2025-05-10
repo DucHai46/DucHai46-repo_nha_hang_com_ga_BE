@@ -49,7 +49,8 @@ public class NhaHangRepository : INhaHangRepository
                 .Include(x => x.website)
                 .Include(x => x.logo)
                 .Include(x => x.banner)
-                .Include(x => x.moTa);
+                .Include(x => x.moTa)
+                .Include(x => x.isActive);
 
             var findOptions = new FindOptions<NhaHang, NhaHangRespond>
             {
