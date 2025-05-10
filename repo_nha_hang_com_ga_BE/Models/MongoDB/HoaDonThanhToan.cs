@@ -7,8 +7,8 @@ public class HoaDonThanhToan : BaseMongoDb
 {
     public string? tenHoaDon { get; set; }
     public string? qrCode { get; set; }
-    public DateTime? gioVao { get; set; }
-    public DateTime? gioRa { get; set; }
+    public DateTimeOffset? gioVao { get; set; }
+    public DateTimeOffset? gioRa { get; set; }
     public int? soNguoi { get; set; }
     public TrangThaiHoaDon? trangthai { get; set; }
 

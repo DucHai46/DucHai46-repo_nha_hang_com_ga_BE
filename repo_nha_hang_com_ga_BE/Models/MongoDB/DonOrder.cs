@@ -12,7 +12,8 @@ public class DonOrder : BaseMongoDb
 
     public string? loaiDon { get; set; }
 
-    public IdName? ban { get; set; }
+    public string? ban { get; set; }
+    public string? khachHang { get; set; }
 
     public TrangThaiDonOrder? trangThai { get; set; }
 
@@ -33,27 +34,31 @@ public enum TrangThaiDonOrder
 
 public class ChiTietDonOrder
 {
-    public List<DoMonAn>? monAns { get; set; }
+    // public string? id { get; set; }
+    public List<DonMonAn>? monAns { get; set; }
 
-    public int? _trangThai { get; set; }
+    public int? trangThai { get; set; }
 }
 
-public class DoMonAn
+public class DonMonAn
 {
-    public IdName? monAn { get; set; }
+
+    public string? monAn { get; set; }
+
+    // public string? tenMonAn { get; set; }
 
     public TrangThaiDonMonAn? monAn_trangThai { get; set; }
 
     public int? soLuong { get; set; }
 
-    public int? giaTien { get; set; }
+    // public int? giaTien { get; set; }
 
     public string? moTa { get; set; }
 }
 
 public enum TrangThaiDonMonAn
 {
-    [Description("Chưa chế biến")]
+    [Description("Đang chế biến")]
     DangCheBien = 0,
     [Description("Đã phục vụ")]
     DaPhucVu = 1,

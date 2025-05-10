@@ -5,9 +5,9 @@ namespace repo_nha_hang_com_ga_BE.Models.MongoDB
 {
     public class DonDatBan : BaseMongoDb
     {
-        public IdName? ban { get; set; }
+        public string? ban { get; set; }
 
-        public IdName? khachHang { get; set; }
+        public string? khachHang { get; set; }
 
         public string? khungGio { get; set; }
 

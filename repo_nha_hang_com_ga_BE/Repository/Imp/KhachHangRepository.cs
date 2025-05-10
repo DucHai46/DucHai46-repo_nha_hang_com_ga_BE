@@ -198,7 +198,7 @@ public class KhachHangRepository : IKhachHangRepository
 
             var updateResult = await _collection.ReplaceOneAsync(filter, khachHang);
 
-            if (updateResult.IsAcknowledged || updateResult.ModifiedCount > 0)
+            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
             {
                 return new RespondAPI<KhachHangRespond>(
                     ResultRespond.Error,

@@ -46,6 +46,8 @@ using repo_nha_hang_com_ga_BE.Models.Requests.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Responds.DonOrder;
 using repo_nha_hang_com_ga_BE.Models.Requests.LoaiDon;
 using repo_nha_hang_com_ga_BE.Models.Responds.LoaiDon;
+using repo_nha_hang_com_ga_BE.Models.Requests;
+using repo_nha_hang_com_ga_BE.Models.Responds.PhuongThucThanhToan;
 using repo_nha_hang_com_ga_BE.Models.Requests.NhaHang;
 using repo_nha_hang_com_ga_BE.Models.Responds.NhaHang;
 using repo_nha_hang_com_ga_BE.Models.Requests.ChucVu;
@@ -172,13 +174,22 @@ public class MappingProfile : Profile
 
         //Đơn Order
         // CreateMap(typeof(DonOrder), typeof(DonOrderRespond));
-        // CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
-        // CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
+        CreateMap<DonOrder, DonOrderRespond>()
+            .ForMember(dest => dest.ban, opt => opt.Ignore())
+           .ForMember(dest => dest.loaiDon, opt => opt.Ignore());
+        CreateMap(typeof(RequestAddDonOrder), typeof(DonOrder));
+        CreateMap(typeof(RequestUpdateDonOrder), typeof(DonOrder));
 
         //Loại đơn order
-        // CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
-        // CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
-        // CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
+        CreateMap(typeof(LoaiDon), typeof(LoaiDonRespond));
+        CreateMap(typeof(RequestAddLoaiDon), typeof(LoaiDon));
+        CreateMap(typeof(RequestUpdateLoaiDon), typeof(LoaiDon));
+
+        //Phương thức thanh toán
+        CreateMap(typeof(PhuongThucThanhToan), typeof(PhuongThucThanhToanRespond));
+        CreateMap(typeof(RequestAddPhuongThucThanhToan), typeof(PhuongThucThanhToan));
+        CreateMap(typeof(RequestUpdatePhuongThucThanhToan), typeof(PhuongThucThanhToan));
+
 
         //Nhà hàng
         CreateMap(typeof(NhaHang), typeof(NhaHangRespond));
