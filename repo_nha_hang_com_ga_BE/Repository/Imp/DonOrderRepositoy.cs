@@ -23,6 +23,7 @@ public class DonOrderRepository : IDonOrderRepository
     private readonly IMongoCollection<LoaiDon> _collectionLoaiDon;
     private readonly IMongoCollection<MonAn> _collectionMonAn;
     private readonly IMongoCollection<KhachHang> _collectionkhachHang;
+    private readonly IMongoCollection<Combo> _collectionCombo;
 
     private readonly IMapper _mapper;
 
@@ -36,6 +37,7 @@ public class DonOrderRepository : IDonOrderRepository
         _collectionLoaiDon = database.GetCollection<LoaiDon>("LoaiDon");
         _collectionMonAn = database.GetCollection<MonAn>("MonAn");
         _collectionkhachHang = database.GetCollection<KhachHang>("KhachHang");
+        _collectionCombo = database.GetCollection<Combo>("Combo");
         _mapper = mapper;
     }
 
@@ -146,6 +148,7 @@ public class DonOrderRepository : IDonOrderRepository
                 var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
                 var monAnDict = new Dictionary<string, string>();
                 var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+                var comBoDict = new Dictionary<string, string>();
 
                 List<MonAn> monAns = new List<MonAn>();
                 foreach (var don in dons)
@@ -178,6 +181,39 @@ public class DonOrderRepository : IDonOrderRepository
                         }
                     }
                 }
+
+                List<Combo> comBos = new List<Combo>();
+                foreach (var don in dons)
+                {
+                    var comBoIds = dons.SelectMany(x => x.chiTietDonOrder)
+                       .SelectMany(ct => ct.comBos)
+                       .Select(ma => ma.comBo)
+                       .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var comBoFilter = Builders<Combo>.Filter.In(x => x.Id, comBoIds);
+
+                    var comBoProjection = Builders<Combo>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenCombo)
+                        .Include(x => x.giaTien);
+
+                    var newComBos = await _collectionCombo.Find(comBoFilter)
+                    .Project<Combo>(comBoProjection)
+                    .ToListAsync();
+
+                    var uniqueComBos = newComBos.Where(x => !comBos.Any(y => y.Id == x.Id));
+                    comBos.AddRange(uniqueComBos);
+
+                    var newComBoDict = comBos.ToDictionary(x => x.Id, x => x.tenCombo);
+                    foreach (var item in newComBoDict)
+                    {
+                        if (!comBoDict.ContainsKey(item.Key))
+                        {
+                            comBoDict.Add(item.Key, item.Value);
+                        }
+                    }
+                }
+
 
                 // Map dữ liệu
                 var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
@@ -214,12 +250,23 @@ public class DonOrderRepository : IDonOrderRepository
                             giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
                             moTa = ma.moTa,
                         }).ToList(),
+                        comBos = ct.comBos.Select(ma => new DonComBoRespond
+                        {
+                            comBo = new IdName
+                            {
+                                Id = ma.comBo,
+                                Name = ma.comBo != null && comBoDict.ContainsKey(ma.comBo) ? comBoDict[ma.comBo] : null
+                            },
+                            comBo_trangThai = ma.comBo_trangThai,
+                            soLuong = ma.soLuong,
+                            giaTien = comBoDict.ContainsKey(ma.comBo) ? comBos.FirstOrDefault(m => m.Id == ma.comBo)?.giaTien : null,
+                            moTa = ma.moTa,
+                        }).ToList(),
                         trangThai = ct.trangThai,
                     }).ToList(),
                     trangThai = donOrder.trangThai,
                     tongTien = donOrder.tongTien,
                 }).ToList();
-
                 var pagingDetail = new PagingDetail(currentPage, request.PageSize, totalRecords);
                 var pagingResponse = new PagingResponse<List<DonOrderRespond>>
                 {
@@ -280,6 +327,7 @@ public class DonOrderRepository : IDonOrderRepository
                 var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
                 var monAnDict = new Dictionary<string, string>();
                 var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+                var comBoDict = new Dictionary<string, string>();
 
                 List<MonAn> monAns = new List<MonAn>();
                 foreach (var don in dons)
@@ -312,6 +360,39 @@ public class DonOrderRepository : IDonOrderRepository
                         }
                     }
                 }
+
+                List<Combo> comBos = new List<Combo>();
+                foreach (var don in dons)
+                {
+                    var comBoIds = dons.SelectMany(x => x.chiTietDonOrder)
+                       .SelectMany(ct => ct.comBos)
+                       .Select(ma => ma.comBo)
+                       .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                    var comBoFilter = Builders<Combo>.Filter.In(x => x.Id, comBoIds);
+
+                    var comBoProjection = Builders<Combo>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.tenCombo)
+                        .Include(x => x.giaTien);
+
+                    var newComBos = await _collectionCombo.Find(comBoFilter)
+                    .Project<Combo>(comBoProjection)
+                    .ToListAsync();
+
+                    var uniqueComBos = newComBos.Where(x => !comBos.Any(y => y.Id == x.Id));
+                    comBos.AddRange(uniqueComBos);
+
+                    var newComBoDict = comBos.ToDictionary(x => x.Id, x => x.tenCombo);
+                    foreach (var item in newComBoDict)
+                    {
+                        if (!comBoDict.ContainsKey(item.Key))
+                        {
+                            comBoDict.Add(item.Key, item.Value);
+                        }
+                    }
+                }
+
 
                 // Map dữ liệu
                 var donOrderResponds = dons.Select(donOrder => new DonOrderRespond
@@ -346,6 +427,18 @@ public class DonOrderRepository : IDonOrderRepository
                             monAn_trangThai = ma.monAn_trangThai,
                             soLuong = ma.soLuong,
                             giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
+                            moTa = ma.moTa,
+                        }).ToList(),
+                        comBos = ct.comBos.Select(ma => new DonComBoRespond
+                        {
+                            comBo = new IdName
+                            {
+                                Id = ma.comBo,
+                                Name = ma.comBo != null && comBoDict.ContainsKey(ma.comBo) ? comBoDict[ma.comBo] : null
+                            },
+                            comBo_trangThai = ma.comBo_trangThai,
+                            soLuong = ma.soLuong,
+                            giaTien = comBoDict.ContainsKey(ma.comBo) ? comBos.FirstOrDefault(m => m.Id == ma.comBo)?.giaTien : null,
                             moTa = ma.moTa,
                         }).ToList(),
                         trangThai = ct.trangThai,
@@ -430,7 +523,9 @@ public class DonOrderRepository : IDonOrderRepository
             var loaiDonDict = loaiDons.ToDictionary(x => x.Id, x => x.tenLoaiDon);
             var monAnDict = new Dictionary<string, string>();
             var khachHangDict = khachHangs.ToDictionary(x => x.Id, x => x.tenKhachHang);
+            var comBoDict = new Dictionary<string, string>();
 
+            List<Combo> comBos = new List<Combo>();
             List<MonAn> monAns = new List<MonAn>();
             foreach (var don in donOrder.chiTietDonOrder)
             {
@@ -438,19 +533,35 @@ public class DonOrderRepository : IDonOrderRepository
                     .Select(ma => ma.monAn)
                     .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
 
+                var comBoIds = donOrder.chiTietDonOrder.SelectMany(x => x.comBos)
+                   .Select(ma => ma.comBo)
+                   .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
                 var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
+                var comBoFilter = Builders<Combo>.Filter.In(x => x.Id, comBoIds);
 
                 var monAnProjection = Builders<MonAn>.Projection
                     .Include(x => x.Id)
                     .Include(x => x.tenMonAn)
                     .Include(x => x.giaTien);
+                var comBoProjection = Builders<Combo>.Projection
+                   .Include(x => x.Id)
+                   .Include(x => x.tenCombo)
+                   .Include(x => x.giaTien);
 
                 var newMonAns = await _collectionMonAn.Find(monAnFilter)
                     .Project<MonAn>(monAnProjection)
                     .ToListAsync();
 
+                var newComBos = await _collectionCombo.Find(comBoFilter)
+                    .Project<Combo>(comBoProjection)
+                    .ToListAsync();
+
                 var uniqueMonAns = newMonAns.Where(x => !monAns.Any(y => y.Id == x.Id));
                 monAns.AddRange(uniqueMonAns);
+
+                var uniqueComBos = newComBos.Where(x => !comBos.Any(y => y.Id == x.Id));
+                comBos.AddRange(uniqueComBos);
 
                 var newDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
                 foreach (var item in newDict)
@@ -458,6 +569,15 @@ public class DonOrderRepository : IDonOrderRepository
                     if (!monAnDict.ContainsKey(item.Key))
                     {
                         monAnDict.Add(item.Key, item.Value);
+                    }
+                }
+
+                var newComBoDict = comBos.ToDictionary(x => x.Id, x => x.tenCombo);
+                foreach (var item in newComBoDict)
+                {
+                    if (!comBoDict.ContainsKey(item.Key))
+                    {
+                        comBoDict.Add(item.Key, item.Value);
                     }
                 }
             }
@@ -495,6 +615,18 @@ public class DonOrderRepository : IDonOrderRepository
                         monAn_trangThai = ma.monAn_trangThai,
                         soLuong = ma.soLuong,
                         giaTien = monAnDict.ContainsKey(ma.monAn) ? monAns.FirstOrDefault(m => m.Id == ma.monAn)?.giaTien : null,
+                        moTa = ma.moTa,
+                    }).ToList(),
+                    comBos = ct.comBos.Select(ma => new DonComBoRespond
+                    {
+                        comBo = new IdName
+                        {
+                            Id = ma.comBo,
+                            Name = ma.comBo != null && comBoDict.ContainsKey(ma.comBo) ? comBoDict[ma.comBo] : null
+                        },
+                        comBo_trangThai = ma.comBo_trangThai,
+                        soLuong = ma.soLuong,
+                        giaTien = comBoDict.ContainsKey(ma.comBo) ? comBos.FirstOrDefault(m => m.Id == ma.comBo)?.giaTien : null,
                         moTa = ma.moTa,
                     }).ToList(),
                     trangThai = ct.trangThai,
@@ -539,6 +671,9 @@ public class DonOrderRepository : IDonOrderRepository
             var loaiDonDict = new Dictionary<string, string>();
             var banDict = new Dictionary<string, string>();
             var khachHangDict = new Dictionary<string, string>();
+            var comBoDict = new Dictionary<string, string>();
+
+            // List<Combo> comBos = new List<Combo>();
 
             // List<MonAn> monAns = new List<MonAn>();
 
@@ -573,9 +708,21 @@ public class DonOrderRepository : IDonOrderRepository
             .ToListAsync();
             banDict = bans.ToDictionary(x => x.Id, x => x.tenBan);
 
+            List<Combo> comBos = new List<Combo>();
             List<MonAn> monAns = new List<MonAn>();
 
             var monAnIds = newDonOrder.chiTietDonOrder.SelectMany(x => x.monAns.Select(y => y.monAn)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var comBoIds = newDonOrder.chiTietDonOrder.SelectMany(x => x.comBos.Select(y => y.comBo)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var comBoFilter = Builders<Combo>.Filter.In(x => x.Id, comBoIds);
+            var comBoProjection = Builders<Combo>.Projection
+              .Include(x => x.Id)
+             .Include(x => x.tenCombo)
+             .Include(x => x.giaTien)
+            .Include(x => x.moTa);
+            comBos = await _collectionCombo.Find(comBoFilter)
+              .Project<Combo>(comBoProjection)
+              .ToListAsync();
 
             var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
             var monAnProjection = Builders<MonAn>.Projection
@@ -588,6 +735,8 @@ public class DonOrderRepository : IDonOrderRepository
                 .ToListAsync();
 
             monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+            comBoDict = comBos.ToDictionary(x => x.Id, x => x.tenCombo);
+
 
             var donOrderRespond = new DonOrderRespond
             {
@@ -620,7 +769,19 @@ public class DonOrderRepository : IDonOrderRepository
                         monAn_trangThai = y.monAn_trangThai,
                         soLuong = y.soLuong,
                         giaTien = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.giaTien : null,
-                        moTa = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.moTa : null
+                        moTa = y.moTa,
+                    }).ToList(),
+                    comBos = x.comBos.Select(y => new DonComBoRespond
+                    {
+                        comBo = new IdName
+                        {
+                            Id = y.comBo,
+                            Name = comBoDict.ContainsKey(y.comBo) ? comBoDict[y.comBo] : null,
+                        },
+                        comBo_trangThai = y.comBo_trangThai,
+                        soLuong = y.soLuong,
+                        giaTien = comBoDict.ContainsKey(y.comBo) ? comBos.FirstOrDefault(m => m.Id == y.comBo)?.giaTien : null,
+                        moTa = y.moTa,
                     }).ToList(),
                     trangThai = x.trangThai
                 }).ToList(),
@@ -688,6 +849,7 @@ public class DonOrderRepository : IDonOrderRepository
             var loaiDonDict = new Dictionary<string, string>();
             var banDict = new Dictionary<string, string>();
             var khachHangDict = new Dictionary<string, string>();
+            var comBoDict = new Dictionary<string, string>();
 
             var loaiDonIds = new List<string> { donOrder.loaiDon }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
             var banIds = new List<string> { donOrder.ban }.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
@@ -720,9 +882,21 @@ public class DonOrderRepository : IDonOrderRepository
             .ToListAsync();
             banDict = bans.ToDictionary(x => x.Id, x => x.tenBan);
 
+            List<Combo> comBos = new List<Combo>();
             List<MonAn> monAns = new List<MonAn>();
 
             var monAnIds = donOrder.chiTietDonOrder.SelectMany(x => x.monAns.Select(y => y.monAn)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+            var comBoIds = donOrder.chiTietDonOrder.SelectMany(x => x.comBos.Select(y => y.comBo)).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+            var comBoFilter = Builders<Combo>.Filter.In(x => x.Id, comBoIds);
+            var comBoProjection = Builders<Combo>.Projection
+             .Include(x => x.Id)
+            .Include(x => x.tenCombo)
+            .Include(x => x.giaTien)
+            .Include(x => x.moTa);
+            comBos = await _collectionCombo.Find(comBoFilter)
+             .Project<Combo>(comBoProjection)
+             .ToListAsync();
 
             var monAnFilter = Builders<MonAn>.Filter.In(x => x.Id, monAnIds);
             var monAnProjection = Builders<MonAn>.Projection
@@ -735,6 +909,7 @@ public class DonOrderRepository : IDonOrderRepository
                 .ToListAsync();
 
             monAnDict = monAns.ToDictionary(x => x.Id, x => x.tenMonAn);
+            comBoDict = comBos.ToDictionary(x => x.Id, x => x.tenCombo);
 
             var donOrderRespond = new DonOrderRespond
             {
@@ -767,7 +942,19 @@ public class DonOrderRepository : IDonOrderRepository
                         monAn_trangThai = y.monAn_trangThai,
                         soLuong = y.soLuong,
                         giaTien = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.giaTien : null,
-                        moTa = monAnDict.ContainsKey(y.monAn) ? monAns.FirstOrDefault(m => m.Id == y.monAn)?.moTa : null
+                        moTa = y.moTa,
+                    }).ToList(),
+                    comBos = x.comBos.Select(y => new DonComBoRespond
+                    {
+                        comBo = new IdName
+                        {
+                            Id = y.comBo,
+                            Name = comBoDict.ContainsKey(y.comBo) ? comBoDict[y.comBo] : null,
+                        },
+                        comBo_trangThai = y.comBo_trangThai,
+                        soLuong = y.soLuong,
+                        giaTien = comBoDict.ContainsKey(y.comBo) ? comBos.FirstOrDefault(m => m.Id == y.comBo)?.giaTien : null,
+                        moTa = y.moTa,
                     }).ToList(),
                     trangThai = x.trangThai
                 }).ToList(),

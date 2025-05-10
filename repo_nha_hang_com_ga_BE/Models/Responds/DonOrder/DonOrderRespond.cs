@@ -24,6 +24,7 @@ public class ChiTietDonOrderRespond
 {
 
     public List<DonMonAnRespond>? monAns { get; set; }
+    public List<DonComBoRespond>? comBos { get; set; }
 
     public int? trangThai { get; set; }
 
@@ -42,4 +43,16 @@ public class DonMonAnRespond
 
     public string? moTa { get; set; }
 
+}
+public class DonComBoRespond
+{
+
+    public IdName? comBo { get; set; }
+
+    public TrangThaiDonMonAn? comBo_trangThai { get; set; }
+    public int? soLuong { get; set; }
+
+    public int? giaTien { get; set; }
+
+    public string? moTa { get; set; }
 }
